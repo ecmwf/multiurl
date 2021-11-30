@@ -31,7 +31,7 @@ DOWNLOADERS = {
 }
 
 
-def get_downloader(url, **kwargs):
+def Downloader(url, **kwargs):
 
     if isinstance(url, (list, tuple)):
         from .multiurl import MultiDownloader
@@ -41,11 +41,11 @@ def get_downloader(url, **kwargs):
         if isinstance(url[0], (list, tuple)):
             assert "parts" not in kwargs
             for u, p in url:
-                downloaders.append(get_downloader(u, parts=p, **kwargs))
+                downloaders.append(Downloader(u, parts=p, **kwargs))
         else:
             p = kwargs.pop("parts", None)
             for u in url:
-                downloaders.append(get_downloader(u, parts=p, **kwargs))
+                downloaders.append(Downloader(u, parts=p, **kwargs))
         return MultiDownloader(downloaders)
 
     parts = kwargs.get("parts")
@@ -65,6 +65,8 @@ def get_downloader(url, **kwargs):
 
 
 def download(url, target, resume=False, override=True, **kwargs):
-    return get_downloader(url, **kwargs).download(
-        target, resume=resume, override=override
+    return Downloader(url, **kwargs).download(
+        target,
+        resume=resume,
+        override=override,
     )

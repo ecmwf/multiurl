@@ -1,13 +1,13 @@
-from multiurl import get_downloader
+from multiurl import Downloader
 
 
 def test_http():
-    get_downloader("http://localhost")
+    Downloader("http://localhost")
 
 
 def test_ftp():
-    get_downloader("ftp://localhost")
+    Downloader("ftp://localhost")
 
 
 def test_file():
-    get_downloader("file://localhost")
+    Downloader("file://localhost")
