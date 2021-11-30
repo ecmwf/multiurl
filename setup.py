@@ -32,7 +32,7 @@ assert version
 setuptools.setup(
     name="multiurl",
     version=version,
-    description="A packages to download several URL as one, as well as supporting multi-part URLs",
+    description="A package to download several URL as one, as well as supporting multi-part URLs",
     long_description=read("README.md"),
     author="European Centre for Medium-Range Weather Forecasts (ECMWF)",
     author_email="software.support@ecmwf.int",
