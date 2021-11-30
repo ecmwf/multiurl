@@ -44,6 +44,7 @@ jobs:
 
       - name: Install
         run: |
+          pip install pytest
           pip install -e .
           pip freeze
 
