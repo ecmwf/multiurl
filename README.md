@@ -38,7 +38,7 @@ Provide parts of URLs as a list of `(offset, length)` tuples.
 from multiurl import download
 
 download(url="http://example.com/test.data",
-         parts = [(0, 10), (40, 10), (60, 10)]
+         parts = [(0, 10), (40, 10), (60, 10)],
          target="data.file")
 ```
 
@@ -48,7 +48,7 @@ download(url="http://example.com/test.data",
 from multiurl import download
 
 download(url=[("http://example.com/test1.data", [(0, 10), (40, 10), (60, 10)]),
-              ("http://example.com/test2.data", [(0, 10), (40, 10), (60, 10)]),
+              ("http://example.com/test2.data", [(0, 10), (40, 10), (60, 10)])],
          target="data.file")
 ```
 
