@@ -32,7 +32,7 @@ assert version
 setuptools.setup(
     name="multiurl",
     version=version,
-    description="A packages to search for shared libraries on various platforms",
+    description="A packages to download several URL as one, as well as supporting multi-part URLs",
     long_description=read("README.md"),
     author="European Centre for Medium-Range Weather Forecasts (ECMWF)",
     author_email="software.support@ecmwf.int",
@@ -40,7 +40,7 @@ setuptools.setup(
     url="https://github.com/ecmwf/multiurl",
     packages=setuptools.find_packages(),
     include_package_data=True,
-    install_requires=["requests"],
+    install_requires=["requests", "tqdm"],
     zip_safe=True,
     keywords="tool",
     classifiers=[
