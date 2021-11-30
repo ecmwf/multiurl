@@ -8,8 +8,8 @@
 #
 
 
-from .downloader import get_downloader
+from .downloader import download
 
 __version__ = "0.0.1"
 
-__all__ = ["get_downloader"]
+__all__ = ["download"]

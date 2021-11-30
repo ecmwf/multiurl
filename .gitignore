@@ -133,3 +133,4 @@ dmypy.json
 test.py
 .vscode/
 target
+data

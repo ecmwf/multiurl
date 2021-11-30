@@ -62,3 +62,9 @@ def get_downloader(url, **kwargs):
     downloader = DOWNLOADERS[(o.scheme, has_parts)](url, **kwargs)
 
     return downloader
+
+
+def download(url, target, resume=False, override=True, **kwargs):
+    return get_downloader(url, **kwargs).download(
+        target, resume=resume, override=override
+    )
