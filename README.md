@@ -32,7 +32,7 @@ download(url=["http://example.com/test1.data",
 
 ## Download parts of URLs
 
-Provide parts of URLs as a list of `(offset, length)` tuples.
+Provide parts of URLs as a list of `(offset, length)` tuples, expressed in bytes.
 
 ```python
 from multiurl import download
