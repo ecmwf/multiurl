@@ -1,6 +1,6 @@
 # multiurl
 
-A packages to download several URL as one, as well as supporting multi-part URLs
+A package to download several URL as one, as well as supporting multi-part URLs
 
 ## Simple example
 
