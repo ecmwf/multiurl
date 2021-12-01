@@ -134,3 +134,4 @@ test.py
 .vscode/
 target
 data
+*.download
