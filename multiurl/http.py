@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import time
-from collections import namedtuple
 
 import pytz
 import requests
@@ -24,13 +23,11 @@ from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
 
 LOG = logging.getLogger(__name__)
 
-ServerCabilities = namedtuple(
-    "ServerCabilities",
-    [
-        "accept_ranges",
-        "accept_multiple_ranges",
-    ],
-)
+
+class ServerCabilities:
+    def __init__(self, accept_ranges, accept_multiple_ranges):
+        self.accept_ranges = accept_ranges
+        self.accept_multiple_ranges = accept_multiple_ranges
 
 
 def NoFilter(x):
