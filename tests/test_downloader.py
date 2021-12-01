@@ -7,7 +7,10 @@
 # nor does it submit to any jurisdiction.
 #
 
-from multiurl import Downloader
+import logging
+import os
+
+from multiurl import Downloader, download
 
 
 def test_http():
@@ -20,3 +23,40 @@ def test_ftp():
 
 def test_file():
     Downloader("file://localhost")
+
+
+def test_parts():
+
+    # download(
+    #     url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+    #     target="out.data",
+    # )
+
+    download(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=((0, 4),),
+        target="out.data",
+    )
+
+    assert os.path.getsize("out.data") == 4
+
+    with open("out.data", "rb") as f:
+        assert f.read() == b"BUFR"
+
+    download(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=((0, 10), (50, 10), (60, 10)),
+        target="out.data",
+    )
+
+    print("out.data")
+
+    assert os.path.getsize("out.data") == 30
+
+    with open("out.data", "rb") as f:
+        assert f.read()[:4] == b"BUFR"
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test_parts()

@@ -135,3 +135,4 @@ test.py
 target
 data
 *.download
+*.data

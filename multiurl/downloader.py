@@ -69,9 +69,5 @@ def Downloader(url, **kwargs):
     return downloader
 
 
-def download(url, target, resume_transfers=False, override_target_file=True, **kwargs):
-    return Downloader(url, **kwargs).download(
-        target,
-        resume_transfers=resume_transfers,
-        override_target_file=override_target_file,
-    )
+def download(url, target, **kwargs):
+    return Downloader(url, **kwargs).download(target)

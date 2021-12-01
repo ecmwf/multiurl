@@ -174,6 +174,10 @@ class HTTPDownloaderBase(DownloaderBase):
         return False
 
     def check_for_restarts(self, target):
+
+        if not self.resume_transfers:
+            return 0
+
         if not os.path.exists(target):
             return 0
 
@@ -204,7 +208,7 @@ class HTTPDownloaderBase(DownloaderBase):
         headers = {}
         headers.update(self.http_headers)
         if bytes_ranges is not None:
-            headers["x-ms-range"] = bytes_ranges
+            headers["range"] = bytes_ranges
 
         LOG.debug("Issue request for %s", self.url)
         LOG.debug("Headers: %s", json.dumps(headers, indent=4, sort_keys=True))

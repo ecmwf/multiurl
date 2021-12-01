@@ -69,6 +69,9 @@ class DownloaderBase:
         observer=_ignore,
         statistics_gatherer=_ignore,
         progress_bar=progress_bar,
+        resume_transfers=False,
+        override_target_file=True,
+        download_file_extension=None,
         **kwargs,
     ):
         self.url = url
@@ -78,6 +81,9 @@ class DownloaderBase:
         self.observer = observer
         self.statistics_gatherer = statistics_gatherer
         self.progress_bar = progress_bar
+        self.resume_transfers = resume_transfers
+        self.override_target_file = override_target_file
+        self.download_file_extension = download_file_extension
 
     def local_path(self):
         return None
@@ -95,17 +101,18 @@ class DownloaderBase:
             extensions.append(".unknown")
         return "".join(reversed(extensions))
 
-    def download(self, target, resume_transfers=False, override_target_file=True):
-        if os.path.exists(target) and not override_target_file:
+    def download(self, target):
+        if os.path.exists(target) and not self.override_target_file:
             return
 
-        download = target + ".download"
+        if self.download_file_extension is not None:
+            download = target + ".download"
+        else:
+            download = target
+
         LOG.info("Downloading %s", self.url)
 
         size, mode, skip, trust_size = self.prepare(download)
-        if not resume_transfers:
-            skip = 0
-            mode = "wb"
 
         with self.progress_bar(
             total=size,
@@ -123,7 +130,8 @@ class DownloaderBase:
                 os.path.getsize(download) == size
             ), f"File size mismatch {os.path.getsize(download)} bytes instead of {size}"
 
-        os.rename(download, target)
+        if download != target:
+            os.rename(download, target)
 
         self.finalise()
         return total
