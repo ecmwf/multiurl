@@ -8,8 +8,12 @@
 #
 
 
-from .downloader import Downloader, download
+from .downloader import Downloader, download, robust
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
-__all__ = ["download", "Downloader"]
+__all__ = [
+    "download",
+    "Downloader",
+    "robust",
+]

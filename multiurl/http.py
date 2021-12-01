@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import time
+from collections import namedtuple
 
 import pytz
 import requests
@@ -23,14 +24,20 @@ from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
 
 LOG = logging.getLogger(__name__)
 
+ServerCabilities = namedtuple(
+    "ServerCabilities",
+    [
+        "accept_ranges",
+        "accept_multiple_ranges",
+    ],
+)
+
 
 def NoFilter(x):
     return x
 
 
 class HTTPDownloaderBase(DownloaderBase):
-    supports_parts = True
-
     def __init__(
         self,
         url,
@@ -38,8 +45,8 @@ class HTTPDownloaderBase(DownloaderBase):
         http_headers=None,
         fake_headers=None,
         range_method=None,
-        retry_max=500,
-        sleep_max=120,
+        maximum_retries=500,
+        retry_after=120,
         **kwargs,
     ):
         super().__init__(url, **kwargs)
@@ -49,8 +56,8 @@ class HTTPDownloaderBase(DownloaderBase):
         self.verify = verify
         self.fake_headers = fake_headers
         self.range_method = range_method
-        self.sleep_max = sleep_max
-        self.retry_max = retry_max
+        self.retry_after = retry_after
+        self.maximum_retries = maximum_retries
 
     def headers(self):
         if self._headers is None or self.url != self._url:
@@ -200,7 +207,10 @@ class HTTPDownloaderBase(DownloaderBase):
         headers = {}
         headers.update(self.http_headers)
         if bytes_ranges is not None:
-            headers["range"] = bytes_ranges
+            headers["x-ms-range"] = bytes_ranges
+
+        LOG.debug("Issue request for %s", self.url)
+        LOG.debug("Headers: %s", json.dumps(headers, indent=4, sort_keys=True))
 
         r = self.robust(requests.get)(
             self.url,
@@ -217,52 +227,7 @@ class HTTPDownloaderBase(DownloaderBase):
         return r
 
     def robust(self, call):
-        def retriable(code):
-
-            return code in (
-                requests.codes.internal_server_error,
-                requests.codes.bad_gateway,
-                requests.codes.service_unavailable,
-                requests.codes.gateway_timeout,
-                requests.codes.too_many_requests,
-                requests.codes.request_timeout,
-            )
-
-        def wrapped(*args, **kwargs):
-            tries = 0
-            while tries < self.retry_max:
-                try:
-                    r = call(*args, **kwargs)
-                except (
-                    requests.exceptions.ConnectionError,
-                    requests.exceptions.ReadTimeout,
-                ) as e:
-                    r = None
-                    LOG.warning(
-                        "Recovering from connection error [%s], attemps %s of %s",
-                        e,
-                        tries,
-                        self.retry_max,
-                    )
-
-                if r is not None:
-                    if not retriable(r.status_code):
-                        return r
-                    LOG.warning(
-                        "Recovering from HTTP error [%s %s], attemps %s of %s",
-                        r.status_code,
-                        r.reason,
-                        tries,
-                        self.retry_max,
-                    )
-
-                tries += 1
-
-                LOG.warning("Retrying in %s seconds", self.sleep_max)
-                time.sleep(self.sleep_max)
-                LOG.info("Retrying now...")
-
-        return wrapped
+        return robust(call, self.maximum_retries, self.retry_after)
 
 
 class FullHTTPDownloader(HTTPDownloaderBase):
@@ -309,11 +274,29 @@ class FullHTTPDownloader(HTTPDownloaderBase):
 
 
 class PartHTTPDownloader(HTTPDownloaderBase):
+    _server_cabilities = None
+
+    @property
+    def server_cabilities(self):
+        if self._server_cabilities is None:
+            self._server_cabilities = ServerCabilities(False, None)
+            headers = self.headers()
+            if headers.get("accept-ranges") == "bytes":
+                self._server_cabilities.accept_ranges = True
+
+            # Special case for Azure
+            # The server does not announce byte-range support, but supports it
+            # The server will ignore multiple ranges and return everything
+            # https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations
+            if headers.get("server", "unknown").startswith("Windows-Azure-Blob"):
+                self._server_cabilities = ServerCabilities(True, False)
+
+        return self._server_cabilities
+
     def prepare(self, target):
         assert self.parts is not None
 
-        headers = self.headers()
-        if headers.get("accept-ranges") != "bytes":
+        if not self.server_cabilities.accept_ranges:
             return self.bytes_range_not_supported(target)
 
         if len(self.parts) == 1:
@@ -392,12 +375,16 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             parts = rounded
 
         splits = self.split_large_requests(parts)
+        accept_multiple_ranges = self.server_cabilities.accept_multiple_ranges
 
         def iterate_requests(chunk_size):
 
             for bytes_ranges, parts in splits:
 
-                request = self.issue_request(bytes_ranges)
+                if accept_multiple_ranges is False:
+                    request = self.issue_request(bytes_ranges.split(",")[0])
+                else:
+                    request = self.issue_request(bytes_ranges)
 
                 stream = DecodeMultipart(
                     self.url,
@@ -414,3 +401,52 @@ class PartHTTPDownloader(HTTPDownloaderBase):
 
         size = sum(p.length for p in self.parts)
         return (size, "wb", 0, True)
+
+
+def robust(call, maximum_tries=500, retry_after=120):
+    def retriable(code):
+
+        return code in (
+            requests.codes.internal_server_error,
+            requests.codes.bad_gateway,
+            requests.codes.service_unavailable,
+            requests.codes.gateway_timeout,
+            requests.codes.too_many_requests,
+            requests.codes.request_timeout,
+        )
+
+    def wrapped(*args, **kwargs):
+        tries = 0
+        while tries < maximum_tries:
+            try:
+                r = call(*args, **kwargs)
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout,
+            ) as e:
+                r = None
+                LOG.warning(
+                    "Recovering from connection error [%s], attemps %s of %s",
+                    e,
+                    tries,
+                    maximum_tries,
+                )
+
+            if r is not None:
+                if not retriable(r.status_code):
+                    return r
+                LOG.warning(
+                    "Recovering from HTTP error [%s %s], attemps %s of %s",
+                    r.status_code,
+                    r.reason,
+                    tries,
+                    maximum_tries,
+                )
+
+            tries += 1
+
+            LOG.warning("Retrying in %s seconds", retry_after)
+            time.sleep(retry_after)
+            LOG.info("Retrying now...")
+
+    return wrapped

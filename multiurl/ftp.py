@@ -19,9 +19,6 @@ LOG = logging.getLogger(__name__)
 
 
 class FTPDownloaderBase(DownloaderBase):
-
-    supports_parts = False
-
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
 

@@ -13,11 +13,12 @@ from urllib.parse import urlparse
 from .file import FullFileDownloader, PartFileDownloader
 from .ftp import FullFTPDownloader, PartFTPDownloader
 from .heuristics import Part
-from .http import FullHTTPDownloader, PartHTTPDownloader
+from .http import FullHTTPDownloader, PartHTTPDownloader, robust
 from .multipart import compress_parts
 
 LOG = logging.getLogger(__name__)
 
+__all__ = ["Downloader", "download", "robust"]
 
 DOWNLOADERS = {
     ("ftp", False): FullFTPDownloader,
@@ -46,6 +47,10 @@ def Downloader(url, **kwargs):
             p = kwargs.pop("parts", None)
             for u in url:
                 downloaders.append(Downloader(u, parts=p, **kwargs))
+
+        if len(downloaders) == 1:
+            return downloaders[0]
+
         return MultiDownloader(downloaders)
 
     parts = kwargs.get("parts")

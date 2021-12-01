@@ -17,9 +17,6 @@ LOG = logging.getLogger(__name__)
 
 
 class FileDownloaderBase(DownloaderBase):
-
-    supports_parts = True
-
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
         o = urlparse(self.url)
