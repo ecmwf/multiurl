@@ -7,13 +7,16 @@
 # nor does it submit to any jurisdiction.
 #
 
+from multiurl import Downloader
 
-from .downloader import Downloader, download, robust
 
-__version__ = "0.0.3"
+def test_http():
+    Downloader("http://localhost")
 
-__all__ = [
-    "download",
-    "Downloader",
-    "robust",
-]
+
+def test_ftp():
+    Downloader("ftp://localhost")
+
+
+def test_file():
+    Downloader("file://localhost")

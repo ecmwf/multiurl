@@ -95,15 +95,15 @@ class DownloaderBase:
             extensions.append(".unknown")
         return "".join(reversed(extensions))
 
-    def download(self, target, resume=False, override=True):
-        if os.path.exists(target) and not override:
+    def download(self, target, resume_transfers=False, override_target_file=True):
+        if os.path.exists(target) and not override_target_file:
             return
 
         download = target + ".download"
         LOG.info("Downloading %s", self.url)
 
         size, mode, skip, trust_size = self.prepare(download)
-        if not resume:
+        if not resume_transfers:
             skip = 0
             mode = "wb"
 
