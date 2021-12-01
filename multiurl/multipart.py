@@ -174,10 +174,10 @@ class DecodeMultipart:
 
         if content_type.startswith("multipart/byteranges; boundary="):
             _, boundary = content_type.split("=")
-            # print("******  MULTI-PART supported by server", url)
+            LOG.debug("******  MULTI-PART supported by server %s", url)
             self.streamer = MultiPartStreamer(url, request, parts, boundary, **kwargs)
         else:
-            # print("******  MULTI-PART *NOT* supported by server", url)
+            LOG.debug("******  MULTI-PART *NOT* supported by server %s", url)
             self.streamer = S3Streamer(url, request, parts, **kwargs)
 
     def __call__(self, chunk_size):

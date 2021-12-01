@@ -27,10 +27,10 @@ def test_file():
 
 def test_parts():
 
-    # download(
-    #     url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
-    #     target="out.data",
-    # )
+    download(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        target="out.data",
+    )
 
     download(
         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
@@ -48,8 +48,6 @@ def test_parts():
         parts=((0, 10), (50, 10), (60, 10)),
         target="out.data",
     )
-
-    print("out.data")
 
     assert os.path.getsize("out.data") == 30
 
