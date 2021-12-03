@@ -88,8 +88,10 @@ class DownloaderBase:
     def local_path(self):
         return None
 
-    def extension(self):
-        url_no_args = self.url.split("?")[0]
+    def extension(self, url=None):
+        if url is None:
+            url = self.url
+        url_no_args = url.split("?")[0]
         base = os.path.basename(url_no_args)
         extensions = []
         while True:
