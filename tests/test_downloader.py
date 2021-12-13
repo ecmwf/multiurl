@@ -25,6 +25,16 @@ def test_file():
     Downloader("file://localhost")
 
 
+def test_absolute_path():
+    Downloader(__file__)
+
+
+def test_relative_path():
+    base = os.path.basename(__file__)
+    path = os.path.join("..", base)
+    Downloader(path)
+
+
 def test_parts():
 
     download(
