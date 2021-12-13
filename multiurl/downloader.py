@@ -8,6 +8,8 @@
 #
 
 import logging
+import os
+from pathlib import Path
 from urllib.parse import urlparse
 
 from .file import FullFileDownloader, PartFileDownloader
@@ -29,8 +31,6 @@ DOWNLOADERS = {
     ("https", True): PartHTTPDownloader,
     ("file", False): FullFileDownloader,
     ("file", True): PartFileDownloader,
-    ("", False): FullFileDownloader,
-    ("", True): PartFileDownloader,
 }
 
 
@@ -66,9 +66,16 @@ def Downloader(url, **kwargs):
     o = urlparse(url)
     has_parts = parts is not None and len(parts) > 0
 
-    downloader = DOWNLOADERS[(o.scheme, has_parts)](url, **kwargs)
+    downloader = DOWNLOADERS.get((o.scheme, has_parts))
+    if downloader is None:
+        path = Path(url)
+        if not path.is_absolute():
+            path = Path(os.path.abspath(path))
+        url = path.as_uri()
+        o = urlparse(url)
+        downloader = DOWNLOADERS[(o.scheme, has_parts)]
 
-    return downloader
+    return downloader(url, **kwargs)
 
 
 def download(url, target, **kwargs):
