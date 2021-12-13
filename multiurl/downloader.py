@@ -29,6 +29,8 @@ DOWNLOADERS = {
     ("https", True): PartHTTPDownloader,
     ("file", False): FullFileDownloader,
     ("file", True): PartFileDownloader,
+    ("", False): FullFileDownloader,
+    ("", True): PartFileDownloader,
 }
 
 
