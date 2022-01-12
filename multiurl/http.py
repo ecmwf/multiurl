@@ -107,7 +107,6 @@ class HTTPDownloaderBase(DownloaderBase):
         headers = self.headers()
         if "content-disposition" in headers:
             value, params = cgi.parse_header(headers["content-disposition"])
-            assert value == "attachment", value
             if "filename" in params:
                 return params["filename"]
         return super().title()
