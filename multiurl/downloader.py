@@ -36,7 +36,7 @@ DOWNLOADERS = {
 
 def _ensure_scheme(url):
     o = urlparse(url)
-    if not o.scheme:
+    if not o.scheme or (len(o.scheme) == 1 and not o.netloc):
         path = Path(url)
         if not path.is_absolute():
             path = Path(os.path.abspath(path))
