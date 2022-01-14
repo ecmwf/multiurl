@@ -38,8 +38,14 @@ class FullFileDownloader(FileDownloaderBase):
     def local_path(self):
         return self.path
 
+    def __repr__(self):
+        return f"FullFileDownloader({self.path})"
+
 
 class PartFileDownloader(FileDownloaderBase):
+    def __repr__(self):
+        return f"PartFileDownloader({self.path, self.parts})"
+
     def prepare(self, target):
         parts = self.parts
         size = sum(p.length for p in parts)

@@ -68,10 +68,14 @@ class FTPDownloaderBase(DownloaderBase):
 
 
 class FullFTPDownloader(FTPDownloaderBase):
-    pass
+    def __repr__(self):
+        return f"FullFTPDownloader({self.url})"
 
 
 class PartFTPDownloader(FTPDownloaderBase):
     def __init__(self, url, **kwargs):
         # If needed, that can be implemented with the PartFilter
         raise NotImplementedError("Part FTPDownloader is not yet implemented")
+
+    def __repr__(self):
+        return f"PartFTPDownloader({self.url, self.parts})"

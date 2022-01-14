@@ -32,7 +32,7 @@ def test_absolute_path():
 def test_relative_path():
     base = os.path.basename(__file__)
     path = os.path.join("..", base)
-    Downloader(path)
+    print(Downloader(path))
 
 
 def test_parts():
@@ -65,6 +65,32 @@ def test_parts():
         assert f.read()[:4] == b"BUFR"
 
 
+def test_order():
+    d = Downloader(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=((3, 1), (2, 1), (1, 1), (0, 1)),
+    )
+    print(d)
+    d.download(
+        target="out.data",
+    )
+
+    with open("out.data", "rb") as f:
+        assert f.read()[:4] == b"RFUB"
+
+    d = Downloader(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=reversed([(3, 1), (2, 1), (1, 1), (0, 1)]),
+    )
+    print(d)
+    d.download(
+        target="out.data",
+    )
+
+    with open("out.data", "rb") as f:
+        assert f.read()[:4] == b"BUFR"
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    test_parts()
+    test_order()

@@ -231,6 +231,9 @@ class HTTPDownloaderBase(DownloaderBase):
 
 
 class FullHTTPDownloader(HTTPDownloaderBase):
+    def __repr__(self):
+        return f"FullHTTPDownloader({self.url})"
+
     def prepare(self, target):
         assert self.parts is None
 
@@ -275,6 +278,9 @@ class FullHTTPDownloader(HTTPDownloaderBase):
 
 class PartHTTPDownloader(HTTPDownloaderBase):
     _server_cabilities = None
+
+    def __repr__(self):
+        return f"PartHTTPDownloader({self.url, self.parts})"
 
     @property
     def server_cabilities(self):

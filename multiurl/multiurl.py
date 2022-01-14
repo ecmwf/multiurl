@@ -19,6 +19,9 @@ class MultiDownloader(DownloaderBase):
         super().__init__("<multiple>", **kwargs)
         self.downloaders = downloaders
 
+    def __repr__(self):
+        return f"MultiDownloader({self.downloaders})"
+
     def prepare(self, download):
         total = 0
         trust_size = True

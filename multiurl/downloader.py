@@ -34,48 +34,75 @@ DOWNLOADERS = {
 }
 
 
-def Downloader(url, **kwargs):
-
-    if isinstance(url, (list, tuple)):
-        from .multiurl import MultiDownloader
-
-        assert len(url) > 0
-        downloaders = []
-        if isinstance(url[0], (list, tuple)):
-            assert "parts" not in kwargs
-            for u, p in url:
-                downloaders.append(Downloader(u, parts=p, **kwargs))
-        else:
-            p = kwargs.pop("parts", None)
-            for u in url:
-                downloaders.append(Downloader(u, parts=p, **kwargs))
-
-        if len(downloaders) == 1:
-            return downloaders[0]
-
-        return MultiDownloader(downloaders)
-
-    parts = kwargs.get("parts")
-    if parts is not None:
-        parts = [Part(offset, length) for offset, length in parts]
-        parts = compress_parts(parts)
-        if len(parts) == 0:
-            parts = None
-        kwargs["parts"] = parts
-
+def _ensure_scheme(url):
     o = urlparse(url)
-    has_parts = parts is not None and len(parts) > 0
-
-    downloader = DOWNLOADERS.get((o.scheme, has_parts))
-    if downloader is None:
+    if not o.scheme:
         path = Path(url)
         if not path.is_absolute():
             path = Path(os.path.abspath(path))
         url = path.as_uri()
-        o = urlparse(url)
-        downloader = DOWNLOADERS[(o.scheme, has_parts)]
+    return url
 
-    return downloader(url, **kwargs)
+
+def _ensure_parts(parts):
+    if parts is None:
+        return None
+    parts = [Part(offset, length) for offset, length in parts]
+    if len(parts) == 0:
+        return None
+    return parts
+
+
+def _canonicalize(url, **kwargs):
+    if not isinstance(url, (list, tuple)):
+        url = [url]
+
+    result = []
+    if isinstance(url[0], (list, tuple)):
+        assert "parts" not in kwargs
+        for u, p in url:
+            result.append((_ensure_scheme(u), _ensure_parts(p)))
+    else:
+        p = _ensure_parts(kwargs.pop("parts", None))
+        for u in url:
+            result.append((_ensure_scheme(u), p))
+
+    urls_and_parts = []
+    # Break into ascending order if needed
+    for url, parts in result:
+        if parts is None:
+            urls_and_parts.append((url, None))
+            continue
+
+        last = 0
+        newparts = []
+        for p in parts:
+            if p.offset < last:
+                if newparts:
+                    urls_and_parts.append((url, compress_parts(newparts)))
+                    newparts = []
+            newparts.append(p)
+            last = p.offset
+        urls_and_parts.append((url, compress_parts(newparts)))
+
+    return urls_and_parts, kwargs
+
+
+def Downloader(url, **kwargs):
+    from .multiurl import MultiDownloader
+
+    urls, kwargs = _canonicalize(url, **kwargs)
+
+    downloaders = []
+    for url, parts in urls:
+        o = urlparse(url)
+        klass = DOWNLOADERS[(o.scheme, parts is not None)]
+        downloaders.append(klass(url, parts=parts, **kwargs))
+
+    if len(downloaders) == 1:
+        return downloaders[0]
+
+    return MultiDownloader(downloaders)
 
 
 def download(url, target, **kwargs):
