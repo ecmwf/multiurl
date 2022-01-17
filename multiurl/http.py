@@ -17,6 +17,7 @@ import time
 
 import pytz
 import requests
+from black import replace
 from dateutil.parser import parse as parse_date
 
 from .base import DownloaderBase
@@ -459,18 +460,20 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
             tries += 1
 
             alternate = None
+            replace = 0
             if mirrors is not None:
 
-                for key, values in mirrors.iteritems():
+                for key, values in mirrors.items():
                     if url.startswith(key):
                         alternate = values
+                        replace = len(key)
                         if not isinstance(alternate, (list, tuple)):
                             alternate = [alternate]
 
             if alternate is not None:
                 mirror = random.choice(alternate)
                 LOG.warning("Retrying using mirror %s", mirror)
-                main_url = f"{mirror}{url[len(mirror):]}"
+                main_url = f"{mirror}{url[replace:]}"
             else:
                 LOG.warning("Retrying in %s seconds", retry_after)
                 time.sleep(retry_after)

@@ -41,18 +41,19 @@ def test_robust():
             )
 
 
-# def test_mirror():
+def test_mirror():
 
-#     download(
-#         "http://httpbin.org/status/500",
-#         mirrors={
-#             "http://httpbin.org/status/500": [
-#                 "http://download.ecmwf.int/test-data/metview/gallery/temp.bufr"
-#             ]
-#         },
-#     )
+    download(
+        "http://datastore.copernicus-climate.eu/error/test-data/metview/gallery/temp.bufr",
+        mirrors={
+            "http://datastore.copernicus-climate.eu/error/": [
+                "http://download.ecmwf.int/"
+            ]
+        },
+        target="data.bufr",
+    )
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    test_robust()
+    test_mirror()
