@@ -12,6 +12,7 @@ import datetime
 import json
 import logging
 import os
+import random
 import time
 
 import pytz
@@ -44,6 +45,7 @@ class HTTPDownloaderBase(DownloaderBase):
         range_method=None,
         maximum_retries=500,
         retry_after=120,
+        mirrors=None,
         **kwargs,
     ):
         super().__init__(url, **kwargs)
@@ -55,6 +57,7 @@ class HTTPDownloaderBase(DownloaderBase):
         self.range_method = range_method
         self.retry_after = retry_after
         self.maximum_retries = maximum_retries
+        self.mirrors = mirrors
 
     def headers(self):
         if self._headers is None or self.url != self._url:
@@ -227,7 +230,7 @@ class HTTPDownloaderBase(DownloaderBase):
         return r
 
     def robust(self, call):
-        return robust(call, self.maximum_retries, self.retry_after)
+        return robust(call, self.maximum_retries, self.retry_after, self.mirrors)
 
 
 class FullHTTPDownloader(HTTPDownloaderBase):
@@ -409,23 +412,27 @@ class PartHTTPDownloader(HTTPDownloaderBase):
         return (size, "wb", 0, True)
 
 
-def robust(call, maximum_tries=500, retry_after=120):
+RETRIABLE = (
+    requests.codes.internal_server_error,
+    requests.codes.bad_gateway,
+    requests.codes.service_unavailable,
+    requests.codes.gateway_timeout,
+    requests.codes.too_many_requests,
+    requests.codes.request_timeout,
+)
+
+
+def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
     def retriable(code):
+        return code in RETRIABLE
 
-        return code in (
-            requests.codes.internal_server_error,
-            requests.codes.bad_gateway,
-            requests.codes.service_unavailable,
-            requests.codes.gateway_timeout,
-            requests.codes.too_many_requests,
-            requests.codes.request_timeout,
-        )
-
-    def wrapped(*args, **kwargs):
+    def wrapped(url, *args, **kwargs):
         tries = 0
+        main_url = url
+
         while tries < maximum_tries:
             try:
-                r = call(*args, **kwargs)
+                r = call(main_url, *args, **kwargs)
             except (
                 requests.exceptions.ConnectionError,
                 requests.exceptions.ReadTimeout,
@@ -451,8 +458,22 @@ def robust(call, maximum_tries=500, retry_after=120):
 
             tries += 1
 
-            LOG.warning("Retrying in %s seconds", retry_after)
-            time.sleep(retry_after)
-            LOG.info("Retrying now...")
+            alternate = None
+            if mirrors is not None:
+
+                for key, values in mirrors.iteritems():
+                    if url.startswith(key):
+                        alternate = values
+                        if not isinstance(alternate, (list, tuple)):
+                            alternate = [alternate]
+
+            if alternate is not None:
+                mirror = random.choice(alternate)
+                LOG.warning("Retrying using mirror %s", mirror)
+                main_url = f"{mirror}{url[len(mirror):]}"
+            else:
+                LOG.warning("Retrying in %s seconds", retry_after)
+                time.sleep(retry_after)
+                LOG.info("Retrying now...")
 
     return wrapped
