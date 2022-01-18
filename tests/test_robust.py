@@ -8,6 +8,7 @@
 #
 
 import logging
+import random
 import signal
 from contextlib import contextmanager
 
@@ -33,12 +34,12 @@ def timeout(s):
 def test_robust():
     sleep = 5
     with timeout(len(RETRIABLE * sleep * 10)):
-        for code in RETRIABLE:
-            download(
-                f"http://httpbin.org/status/200,{code}",
-                retry_after=sleep,
-                target="test.data",
-            )
+        code = random.choice(RETRIABLE)
+        download(
+            f"http://httpbin.org/status/200,{code}",
+            retry_after=sleep,
+            target="test.data",
+        )
 
 
 def test_mirror():

@@ -17,7 +17,6 @@ import time
 
 import pytz
 import requests
-from black import replace
 from dateutil.parser import parse as parse_date
 
 from .base import DownloaderBase

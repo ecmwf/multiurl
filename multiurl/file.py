@@ -8,6 +8,7 @@
 #
 
 import logging
+import os
 import sys
 from urllib.parse import urlparse
 
@@ -40,6 +41,23 @@ class FullFileDownloader(FileDownloaderBase):
 
     def __repr__(self):
         return f"FullFileDownloader({self.path})"
+
+    def prepare(self, target):
+        # TODO: resume transfers
+        size = os.path.getsize(self.path)
+        return (size, "wb", 0, True)
+
+    def transfer(self, f, pbar):
+        total = 0
+        with open(self.path, "rb") as g:
+            while True:
+                chunk = g.read(self.chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                pbar.update(len(chunk))
+                total += len(chunk)
+        return total
 
 
 class PartFileDownloader(FileDownloaderBase):
