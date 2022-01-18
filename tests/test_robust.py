@@ -8,8 +8,9 @@
 #
 
 import logging
+import os
 import random
-import signal
+import threading
 from contextlib import contextmanager
 
 from multiurl import download
@@ -22,13 +23,15 @@ def handler(signum, frame):
 
 @contextmanager
 def timeout(s):
-    save = signal.signal(signal.SIGALRM, handler)
-    signal.alarm(s)
+    def killer():
+        os._exit(1)
+
+    save = threading.Timer(s, killer)
+    save.start()
     try:
         yield
     finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, save)
+        save.cancel()
 
 
 def test_robust():
