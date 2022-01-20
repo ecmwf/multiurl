@@ -74,7 +74,9 @@ class S3Streamer:
 class MultiPartStreamer:
     def __init__(self, url, request, parts, boundary, **kwargs):
         self.request = request
-        self.size = int(request.headers["content-length"])
+        self.size = None
+        if "content-length" in request.headers:
+            self.size = int(request.headers["content-length"])
         self.encoding = "utf-8"
         self.parts = parts
         self.boundary = boundary
@@ -114,11 +116,12 @@ class MultiPartStreamer:
                 break
 
             pos = chunk.find(marker)
-            assert pos == 0, (pos, chunk)
+            assert pos == 0, (pos, marker, chunk)
 
             chunk = chunk[pos + len(marker) :]
             while True:
                 pos = chunk.find(end_header)
+                LOG.debug("FIND %s %s", end_header, chunk[:80])
                 if pos != -1:
                     break
                 more = next(iter_content)
@@ -160,7 +163,11 @@ class MultiPartStreamer:
                     size -= len(chunk)
                     chunk = next(iter_content)
 
-            assert chunk.find(end_data) == 0
+            if len(chunk) == 0:
+                chunk = next(iter_content)
+                assert chunk
+
+            assert chunk.find(end_data) == 0, chunk
             chunk = chunk[len(end_data) :]
             part += 1
 
