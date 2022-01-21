@@ -433,6 +433,8 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
         while tries < maximum_tries:
             try:
                 r = call(main_url, *args, **kwargs)
+            except requests.exceptions.SSLError:
+                raise
             except (
                 requests.exceptions.ConnectionError,
                 requests.exceptions.ReadTimeout,
