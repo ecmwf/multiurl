@@ -97,7 +97,9 @@ def Downloader(url, **kwargs):
     for url, parts in urls:
         o = urlparse(url)
         klass = DOWNLOADERS[(o.scheme, parts is not None)]
-        downloaders.append(klass(url, parts=parts, **kwargs))
+        downloaders.append(
+            klass(url, parts=parts, **kwargs).mutate(url, parts=parts, **kwargs)
+        )
 
     if len(downloaders) == 1:
         return downloaders[0]

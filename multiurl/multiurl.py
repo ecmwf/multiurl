@@ -22,11 +22,11 @@ class MultiDownloader(DownloaderBase):
     def __repr__(self):
         return f"MultiDownloader({self.downloaders})"
 
-    def prepare(self, download):
+    def estimate_size(self, download):
         total = 0
         trust_size = True
         for downloader in self.downloaders:
-            size, _, _, trust = downloader.prepare(download)
+            size, _, _, trust = downloader.estimate_size(download)
             if size is not None:
                 total += size
             trust_size = trust_size and trust

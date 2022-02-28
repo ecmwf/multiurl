@@ -117,7 +117,8 @@ class HTTPDownloaderBase(DownloaderBase):
     def transfer(self, f, pbar):
         total = 0
         start = time.time()
-        for chunk in self.stream(chunk_size=self.chunk_size):
+        stream = self.make_stream()
+        for chunk in stream(chunk_size=self.chunk_size):
             self.observer()
             if chunk:
                 f.write(chunk)
@@ -237,7 +238,7 @@ class FullHTTPDownloader(HTTPDownloaderBase):
     def __repr__(self):
         return f"FullHTTPDownloader({self.url})"
 
-    def prepare(self, target):
+    def estimate_size(self, target):
         assert self.parts is None
 
         size = None
@@ -257,26 +258,68 @@ class FullHTTPDownloader(HTTPDownloaderBase):
 
         # Check if we can restarts the transfer
 
-        range = None
+        self.range = None
         bytes = self.check_for_restarts(target)
         if bytes > 0:
             assert size is None or bytes < size, (bytes, size, self.url, target)
             skip = bytes
             mode = "ab"
-            range = f"bytes={bytes}-"
-
-        r = self.issue_request(range)
-
-        self.stream = r.iter_content
+            self.range = f"bytes={bytes}-"
 
         LOG.debug(
-            "url prepare size=%s mode=%s skip=%s trust_size=%s",
+            "url estimate_size size=%s mode=%s skip=%s trust_size=%s",
             size,
             mode,
             skip,
             trust_size,
         )
         return (size, mode, skip, trust_size)
+
+    def make_stream(self):
+        request = self.issue_request(self.range)
+        return request.iter_content
+
+
+class ServerDoesNotSupportPartsHTTPDownloader(HTTPDownloaderBase):
+    def __repr__(self):
+        return f"ServerDoesNotSupportPartsHTTPDownloader({self.url, self.parts})"
+
+    def estimate_size(self, target):
+        size = sum(p.length for p in self.parts)
+        return (size, "wb", 0, True)
+
+    def make_stream(self):
+        request = self.issue_request()
+        return PartFilter(self.parts)(request.iter_content)
+
+
+class SinglePartHTTPDownloader(HTTPDownloaderBase):
+    def __repr__(self):
+        return f"SinglePartHTTPDownloader({self.url, self.parts})"
+
+    def estimate_size(self, target):
+        assert len(self.parts) == 1
+
+        offset, length = self.parts[0]
+        start = offset
+        end = offset + length - 1
+        bytes = self.check_for_restarts(target)
+        if bytes > 0:
+            start += bytes
+            skip = bytes
+            mode = "ab"
+        else:
+            skip = 0
+            mode = "wb"
+
+        self.bytes_range = f"bytes={start}-{end}"
+
+        size = sum(p.length for p in self.parts)
+        return (size, mode, skip, True)
+
+    def make_stream(self):
+        request = self.issue_request(self.bytes_range)
+        return request.iter_content
 
 
 class PartHTTPDownloader(HTTPDownloaderBase):
@@ -302,51 +345,19 @@ class PartHTTPDownloader(HTTPDownloaderBase):
 
         return self._server_cabilities
 
-    def prepare(self, target):
-        assert self.parts is not None
-
+    def mutate(self, *args, **kwargs):
         if not self.server_cabilities.accept_ranges:
-            return self.bytes_range_not_supported(target)
+            LOG.warning(
+                "Server for %s does not support byte ranges, downloading whole file",
+                self.url,
+            )
+            return ServerDoesNotSupportPartsHTTPDownloader(*args, **kwargs)
 
         if len(self.parts) == 1:
-            return self.one_part_only(target)
+            # Special case, we let HTTP to its job, so we can resume transfers if needed
+            return SinglePartHTTPDownloader(*args, **kwargs)
 
-        return self.multi_parts(target)
-
-    def bytes_range_not_supported(self, target):
-        LOG.warning(
-            "Server for %s does not support byte ranges, downloading whole file",
-            self.url,
-        )
-
-        request = self.issue_request()
-        self.stream = PartFilter(self.parts)(request.iter_content)
-
-        size = sum(p.length for p in self.parts)
-        return (size, "wb", 0, True)
-
-    def one_part_only(self, target):
-        # Special case, we let HTTP to its job, so we can resume transfers if needed
-        assert len(self.parts) == 1
-
-        offset, length = self.parts[0]
-        start = offset
-        end = offset + length - 1
-        bytes = self.check_for_restarts(target)
-        if bytes > 0:
-            start += bytes
-            skip = bytes
-            mode = "ab"
-        else:
-            skip = 0
-            mode = "wb"
-
-        bytes_range = f"bytes={start}-{end}"
-        request = self.issue_request(bytes_range)
-        self.stream = request.iter_content
-
-        size = sum(p.length for p in self.parts)
-        return (size, mode, skip, True)
+        return self
 
     def split_large_requests(self, parts):
         ranges = []
@@ -365,8 +376,11 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             parts[middle:]
         )
 
-    def multi_parts(self, target):
+    def estimate_size(self, target):
+        size = sum(p.length for p in self.parts)
+        return (size, "wb", 0, True)
 
+    def make_stream(self):
         # TODO: implement transfer restarts by trimming the list of parts
 
         filter = NoFilter
@@ -406,10 +420,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
 
                 yield from stream(chunk_size)
 
-        self.stream = filter(iterate_requests)
-
-        size = sum(p.length for p in self.parts)
-        return (size, "wb", 0, True)
+        return filter(iterate_requests)
 
 
 RETRIABLE = (

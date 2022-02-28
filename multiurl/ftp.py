@@ -22,7 +22,7 @@ class FTPDownloaderBase(DownloaderBase):
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
 
-    def prepare(self, target):
+    def estimate_size(self, target):
 
         o = urlparse(self.url)
         assert o.scheme == "ftp"

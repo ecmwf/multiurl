@@ -85,6 +85,9 @@ class DownloaderBase:
         self.override_target_file = override_target_file
         self.download_file_extension = download_file_extension
 
+    def mutate(self, *args, **kwargs):
+        return self
+
     def local_path(self):
         return None
 
@@ -114,7 +117,7 @@ class DownloaderBase:
 
         LOG.info("Downloading %s", self.url)
 
-        size, mode, skip, trust_size = self.prepare(download)
+        size, mode, skip, trust_size = self.estimate_size(download)
 
         with self.progress_bar(
             total=size,
