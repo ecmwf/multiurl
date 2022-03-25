@@ -11,8 +11,9 @@ import logging
 import os
 import random
 import threading
-import pytest
 from contextlib import contextmanager
+
+import pytest
 
 from multiurl import download
 from multiurl.http import RETRIABLE
@@ -44,6 +45,7 @@ def test_robust():
             retry_after=sleep,
             target="test.data",
         )
+
 
 @pytest.mark.skipif(True, reason="Mirror disabled")
 def test_mirror():
