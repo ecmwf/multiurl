@@ -84,8 +84,9 @@ class HTTPDownloaderBase(DownloaderBase):
                 except Exception:
                     self._url = None
                     self._headers = {}
-                    LOG.exception("HEAD %s", self.url)
-                    LOG.error("Ignoring HEAD exception.")
+                    if LOG.level == logging.DEBUG:
+                        LOG.exception("HEAD %s", self.url)
+                        LOG.error("Ignoring HEAD exception.")
         return self._headers
 
     def extension(self):
