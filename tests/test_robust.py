@@ -11,6 +11,7 @@ import logging
 import os
 import random
 import threading
+import pytest
 from contextlib import contextmanager
 
 from multiurl import download
@@ -44,7 +45,7 @@ def test_robust():
             target="test.data",
         )
 
-
+@pytest.mark.skipif(True, reason="Mirror disabled")
 def test_mirror():
 
     download(
