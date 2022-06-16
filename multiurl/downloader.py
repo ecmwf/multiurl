@@ -89,7 +89,6 @@ def _canonicalize(url, **kwargs):
 
 
 def Downloader(url, **kwargs):
-    from .multiurl import MultiDownloader
 
     urls, kwargs = _canonicalize(url, **kwargs)
 
@@ -103,6 +102,8 @@ def Downloader(url, **kwargs):
 
     if len(downloaders) == 1:
         return downloaders[0]
+
+    from .multiurl import MultiDownloader
 
     return MultiDownloader(downloaders)
 
