@@ -227,7 +227,13 @@ class HTTPDownloaderBase(DownloaderBase):
         )
         try:
             r.raise_for_status()
-        except Exception:
+        except Exception as e:
+            if (
+                isinstance(e, requests.HTTPError)
+                and e.response is not None
+                and e.response.status_code == requests.codes.not_found
+            ):
+                raise  # Keep quiet on 404s
             LOG.error("URL %s: %s", self.url, r.text)
             raise
         return r
