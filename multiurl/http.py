@@ -449,7 +449,13 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
         tries = 0
         main_url = url
 
-        while tries < maximum_tries:
+        while True:
+            tries += 1
+
+            if tries >= maximum_tries:
+                # Last attempt, don't do anything
+                return call(main_url, *args, **kwargs)
+
             try:
                 r = call(main_url, *args, **kwargs)
             except requests.exceptions.SSLError:
@@ -458,6 +464,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 requests.exceptions.ConnectionError,
                 requests.exceptions.ReadTimeout,
             ) as e:
+
                 r = None
                 LOG.warning(
                     "Recovering from connection error [%s], attemps %s of %s",
@@ -476,8 +483,6 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                     tries,
                     maximum_tries,
                 )
-
-            tries += 1
 
             alternate = None
             replace = 0
