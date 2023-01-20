@@ -25,7 +25,7 @@ from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
 LOG = logging.getLogger(__name__)
 
 
-class ServerCabilities:
+class ServerCapabilities:
     def __init__(self, accept_ranges, accept_multiple_ranges):
         self.accept_ranges = accept_ranges
         self.accept_multiple_ranges = accept_multiple_ranges
@@ -331,30 +331,44 @@ class SinglePartHTTPDownloader(HTTPDownloaderBase):
 
 
 class PartHTTPDownloader(HTTPDownloaderBase):
-    _server_cabilities = None
+    _server_capabilities = None
 
     def __repr__(self):
         return f"PartHTTPDownloader({self.url, self.parts})"
 
     @property
-    def server_cabilities(self):
-        if self._server_cabilities is None:
-            self._server_cabilities = ServerCabilities(False, None)
+    def server_capabilities(self):
+        if self._server_capabilities is None:
+            self._server_capabilities = ServerCapabilities(
+                accept_ranges=False,
+                accept_multiple_ranges=None,
+            )
             headers = self.headers()
             if headers.get("accept-ranges") == "bytes":
-                self._server_cabilities.accept_ranges = True
+                self._server_capabilities.accept_ranges = True
 
             # Special case for Azure
             # The server does not announce byte-range support, but supports it
             # The server will ignore multiple ranges and return everything
             # https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations
             if headers.get("server", "unknown").startswith("Windows-Azure-Blob"):
-                self._server_cabilities = ServerCabilities(True, False)
+                self._server_capabilities = ServerCapabilities(
+                    accept_ranges=True,
+                    accept_multiple_ranges=False,
+                )
 
-        return self._server_cabilities
+            # Special case for AWS
+            # The server will ignore multiple ranges and return everything
+            if headers.get("server", "unknown").startswith("AmazonS3"):
+                self._server_capabilities = ServerCapabilities(
+                    accept_ranges=True,
+                    accept_multiple_ranges=False,
+                )
+
+        return self._server_capabilities
 
     def mutate(self, *args, **kwargs):
-        if not self.server_cabilities.accept_ranges:
+        if not self.server_capabilities.accept_ranges:
             LOG.warning(
                 "Server for %s does not support byte ranges, downloading whole file",
                 self.url,
@@ -406,7 +420,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             parts = rounded
 
         splits = self.split_large_requests(parts)
-        accept_multiple_ranges = self.server_cabilities.accept_multiple_ranges
+        accept_multiple_ranges = self.server_capabilities.accept_multiple_ranges
 
         def iterate_requests(chunk_size):
 

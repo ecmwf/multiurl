@@ -174,6 +174,9 @@ class MultiPartStreamer:
 
 class DecodeMultipart:
     def __init__(self, url, request, parts, **kwargs):
+        LOG.debug("URL: %s", url)
+
+        LOG.debug("RESPONSE Headers: %s", request.headers)
         self.request = request
         assert request.status_code == 206, request.status_code
 
