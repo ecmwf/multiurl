@@ -22,7 +22,6 @@ def test_ftp():
 
 
 def test_parts():
-
     download(
         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
         target="out.data",

@@ -264,7 +264,6 @@ def compress_parts(parts):
 
 
 def compute_byte_ranges(parts, method, url, statistics_gatherer):
-
     if callable(method):
         blocks = method(parts)
     else:

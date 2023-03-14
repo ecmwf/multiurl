@@ -92,7 +92,6 @@ class HTTPDownloaderBase(DownloaderBase):
         return self._headers
 
     def extension(self):
-
         ext = super().extension()
 
         if ext == ".unknown":
@@ -141,9 +140,7 @@ class HTTPDownloaderBase(DownloaderBase):
         return self.headers()
 
     def out_of_date(self, path, cache_data):
-
         if cache_data is not None:
-
             # TODO: check 'cache-control' to see if we should check the etag
             if "cache-control" in cache_data:
                 pass
@@ -181,7 +178,6 @@ class HTTPDownloaderBase(DownloaderBase):
         return False
 
     def check_for_restarts(self, target):
-
         if not self.resume_transfers:
             return 0
 
@@ -411,7 +407,6 @@ class PartHTTPDownloader(HTTPDownloaderBase):
         parts = self.parts
 
         if self.range_method:
-
             rounded, positions = compute_byte_ranges(
                 self.parts,
                 self.range_method,
@@ -425,9 +420,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
         accept_multiple_ranges = self.server_capabilities.accept_multiple_ranges
 
         def iterate_requests(chunk_size):
-
             for bytes_ranges, parts in splits:
-
                 if accept_multiple_ranges is False:
                     request = self.issue_request(bytes_ranges.split(",")[0])
                 else:
@@ -480,7 +473,6 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 requests.exceptions.ConnectionError,
                 requests.exceptions.ReadTimeout,
             ) as e:
-
                 r = None
                 LOG.warning(
                     "Recovering from connection error [%s], attemps %s of %s",
@@ -503,7 +495,6 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
             alternate = None
             replace = 0
             if mirrors is not None:
-
                 for key, values in mirrors.items():
                     if url.startswith(key):
                         alternate = values

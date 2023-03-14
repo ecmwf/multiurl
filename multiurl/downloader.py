@@ -89,7 +89,6 @@ def _canonicalize(url, **kwargs):
 
 
 def Downloader(url, **kwargs):
-
     urls, kwargs = _canonicalize(url, **kwargs)
 
     downloaders = []

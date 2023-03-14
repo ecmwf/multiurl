@@ -49,7 +49,6 @@ def test_robust():
 
 @pytest.mark.skipif(True, reason="Mirror disabled")
 def test_mirror():
-
     download(
         "http://datastore.copernicus-climate.eu/error/test-data/metview/gallery/temp.bufr",
         mirrors={
