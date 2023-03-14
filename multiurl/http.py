@@ -46,6 +46,7 @@ class HTTPDownloaderBase(DownloaderBase):
         maximum_retries=500,
         retry_after=120,
         mirrors=None,
+        session=None,
         **kwargs,
     ):
         super().__init__(url, **kwargs)
@@ -58,6 +59,7 @@ class HTTPDownloaderBase(DownloaderBase):
         self.retry_after = retry_after
         self.maximum_retries = maximum_retries
         self.mirrors = mirrors
+        self.session = requests if session is None else session
 
     def headers(self):
         if self._headers is None or self.url != self._url:
@@ -67,7 +69,7 @@ class HTTPDownloaderBase(DownloaderBase):
                 self._headers = dict(**self.fake_headers)
             else:
                 try:
-                    r = self.robust(requests.head)(
+                    r = self.robust(self.session.head)(
                         self.url,
                         headers=self.http_headers,
                         verify=self.verify,
@@ -218,7 +220,7 @@ class HTTPDownloaderBase(DownloaderBase):
         LOG.debug("Issue request for %s", self.url)
         LOG.debug("Headers: %s", json.dumps(headers, indent=4, sort_keys=True))
 
-        r = self.robust(requests.get)(
+        r = self.robust(self.session.get)(
             self.url,
             stream=True,
             verify=self.verify,
