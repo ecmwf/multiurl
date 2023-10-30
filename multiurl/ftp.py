@@ -48,7 +48,10 @@ class FTPDownloaderBase(DownloaderBase):
         self.filename = os.path.basename(o.path)
         self.ftp = ftp
 
-        return (ftp.size(self.filename), "wb", 0, True)
+        try:
+            return (ftp.size(self.filename), "wb", 0, True)
+        except:
+            return (-1, "wb", True, False)
 
     def transfer(self, f, pbar):
         total = 0
