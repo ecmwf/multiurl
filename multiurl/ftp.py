@@ -10,7 +10,7 @@
 
 import logging
 import os
-from ftplib import FTP
+from ftplib import FTP, error_perm
 from urllib.parse import urlparse
 
 from .base import DownloaderBase
@@ -33,10 +33,16 @@ class FTPDownloaderBase(DownloaderBase):
             auth, server = None, o.netloc
             user, password = "anonymous", "anonymous"
 
-        ftp = FTP(
-            server,
-            timeout=self.timeout,
-        )
+        # If host and port defined, then use ftp.connect
+        if ":" in server:
+            host, port = server.split(":")
+            ftp = FTP(timeout=self.timeout)
+            ftp.connect(host, int(port))
+        else:
+            ftp = FTP(
+                server,
+                timeout=self.timeout,
+            )
 
         if auth:
             ftp.login(user, password)
@@ -50,7 +56,7 @@ class FTPDownloaderBase(DownloaderBase):
 
         try:
             return (ftp.size(self.filename), "wb", 0, True)
-        except:
+        except error_perm:
             return (-1, "wb", True, False)
 
     def transfer(self, f, pbar):
