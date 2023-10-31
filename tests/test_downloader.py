@@ -95,4 +95,4 @@ def test_ftp_download(tmp_path, ftpserver):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    test_order()
+    # test_order()
