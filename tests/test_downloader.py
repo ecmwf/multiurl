@@ -21,58 +21,58 @@ def test_ftp():
     Downloader("ftp://localhost")
 
 
-# def test_parts():
-#     download(
-#         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
-#         target="out.data",
-#     )
+def test_parts():
+    download(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        target="out.data",
+    )
 
-#     download(
-#         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
-#         parts=((0, 4),),
-#         target="out.data",
-#     )
+    download(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=((0, 4),),
+        target="out.data",
+    )
 
-#     assert os.path.getsize("out.data") == 4
+    assert os.path.getsize("out.data") == 4
 
-#     with open("out.data", "rb") as f:
-#         assert f.read() == b"BUFR"
+    with open("out.data", "rb") as f:
+        assert f.read() == b"BUFR"
 
-#     download(
-#         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
-#         parts=((0, 10), (50, 10), (60, 10)),
-#         target="out.data",
-#     )
+    download(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=((0, 10), (50, 10), (60, 10)),
+        target="out.data",
+    )
 
-#     assert os.path.getsize("out.data") == 30
+    assert os.path.getsize("out.data") == 30
 
-#     with open("out.data", "rb") as f:
-#         assert f.read()[:4] == b"BUFR"
+    with open("out.data", "rb") as f:
+        assert f.read()[:4] == b"BUFR"
 
 
-# def test_order():
-#     d = Downloader(
-#         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
-#         parts=((3, 1), (2, 1), (1, 1), (0, 1)),
-#     )
-#     d.download(
-#         target="out.data",
-#     )
+def test_order():
+    d = Downloader(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=((3, 1), (2, 1), (1, 1), (0, 1)),
+    )
+    d.download(
+        target="out.data",
+    )
 
-#     with open("out.data", "rb") as f:
-#         assert f.read()[:4] == b"RFUB"
+    with open("out.data", "rb") as f:
+        assert f.read()[:4] == b"RFUB"
 
-#     d = Downloader(
-#         url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
-#         parts=reversed([(3, 1), (2, 1), (1, 1), (0, 1)]),
-#     )
-#     print(d)
-#     d.download(
-#         target="out.data",
-#     )
+    d = Downloader(
+        url="http://download.ecmwf.int/test-data/metview/gallery/temp.bufr",
+        parts=reversed([(3, 1), (2, 1), (1, 1), (0, 1)]),
+    )
+    print(d)
+    d.download(
+        target="out.data",
+    )
 
-#     with open("out.data", "rb") as f:
-#         assert f.read()[:4] == b"BUFR"
+    with open("out.data", "rb") as f:
+        assert f.read()[:4] == b"BUFR"
 
 
 def test_ftp_download(tmp_path, ftpserver):
