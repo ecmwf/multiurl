@@ -23,35 +23,22 @@ class FTPDownloaderBase(DownloaderBase):
         super().__init__(url, **kwargs)
 
     def estimate_size(self, target):
-        o = urlparse(self.url)
-        assert o.scheme == "ftp"
+        url_object = urlparse(self.url)
+        assert url_object.scheme == "ftp"
 
-        if "@" in o.netloc:
-            auth, server = o.netloc.split("@")
-            user, password = auth.split(":")
-        else:
-            auth, server = None, o.netloc
-            user, password = "anonymous", "anonymous"
+        user, password = url_object.username, url_object.password
 
-        # If host and port defined, then use ftp.connect
-        if ":" in server:
-            host, port = server.split(":")
-            ftp = FTP(timeout=self.timeout)
-            ftp.connect(host, int(port))
-        else:
-            ftp = FTP(
-                server,
-                timeout=self.timeout,
-            )
+        ftp = FTP(timeout=self.timeout)
+        connect_kwargs = {}
+        if url_object.port is not None:
+            connect_kwargs["port"] = url_object.port
+        ftp.connect(host=url_object.hostname, **connect_kwargs)
 
-        if auth:
-            ftp.login(user, password)
-        else:
-            ftp.login()
+        ftp.login(user, password)
 
-        ftp.cwd(os.path.dirname(o.path))
+        ftp.cwd(os.path.dirname(url_object.path))
         ftp.set_pasv(True)
-        self.filename = os.path.basename(o.path)
+        self.filename = os.path.basename(url_object.path)
         self.ftp = ftp
 
         try:
