@@ -4,8 +4,12 @@
 name: Upload Python Package
 
 on:
-
-  push: {}
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 
   release:
     types: [created]
@@ -45,6 +49,7 @@ jobs:
       - name: Install
         run: |
           pip install pytest
+          pip install pytest-localftpserver 
           pip install -e .
           pip freeze
 
@@ -65,7 +70,12 @@ jobs:
       with:
         python-version: '3.x'
 
-    - name: Check that tag version matches climetlab version
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine
+
+    - name: Check that tag version matches code version
       run: |
           tag=${GITHUB_REF#refs/tags/}
           version=$(python setup.py --version)
@@ -73,10 +83,6 @@ jobs:
           echo "version file="$version
           test "$tag" == "$version"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}

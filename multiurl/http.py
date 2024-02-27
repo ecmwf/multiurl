@@ -12,6 +12,7 @@ import datetime
 import json
 import logging
 import os
+import random
 import time
 
 import pytz
@@ -24,13 +25,17 @@ from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
 LOG = logging.getLogger(__name__)
 
 
+class ServerCapabilities:
+    def __init__(self, accept_ranges, accept_multiple_ranges):
+        self.accept_ranges = accept_ranges
+        self.accept_multiple_ranges = accept_multiple_ranges
+
+
 def NoFilter(x):
     return x
 
 
 class HTTPDownloaderBase(DownloaderBase):
-    supports_parts = True
-
     def __init__(
         self,
         url,
@@ -38,8 +43,10 @@ class HTTPDownloaderBase(DownloaderBase):
         http_headers=None,
         fake_headers=None,
         range_method=None,
-        retry_max=500,
-        sleep_max=120,
+        maximum_retries=500,
+        retry_after=120,
+        mirrors=None,
+        session=None,
         **kwargs,
     ):
         super().__init__(url, **kwargs)
@@ -49,8 +56,10 @@ class HTTPDownloaderBase(DownloaderBase):
         self.verify = verify
         self.fake_headers = fake_headers
         self.range_method = range_method
-        self.sleep_max = sleep_max
-        self.retry_max = retry_max
+        self.retry_after = retry_after
+        self.maximum_retries = maximum_retries
+        self.mirrors = mirrors
+        self.session = requests if session is None else session
 
     def headers(self):
         if self._headers is None or self.url != self._url:
@@ -60,7 +69,7 @@ class HTTPDownloaderBase(DownloaderBase):
                 self._headers = dict(**self.fake_headers)
             else:
                 try:
-                    r = self.robust(requests.head)(
+                    r = self.robust(self.session.head)(
                         self.url,
                         headers=self.http_headers,
                         verify=self.verify,
@@ -77,11 +86,12 @@ class HTTPDownloaderBase(DownloaderBase):
                 except Exception:
                     self._url = None
                     self._headers = {}
-                    LOG.exception("HEAD %s", self.url)
+                    if LOG.level == logging.DEBUG:
+                        LOG.exception("HEAD %s", self.url)
+                        LOG.error("Ignoring HEAD exception.")
         return self._headers
 
     def extension(self):
-
         ext = super().extension()
 
         if ext == ".unknown":
@@ -103,7 +113,6 @@ class HTTPDownloaderBase(DownloaderBase):
         headers = self.headers()
         if "content-disposition" in headers:
             value, params = cgi.parse_header(headers["content-disposition"])
-            assert value == "attachment", value
             if "filename" in params:
                 return params["filename"]
         return super().title()
@@ -111,7 +120,8 @@ class HTTPDownloaderBase(DownloaderBase):
     def transfer(self, f, pbar):
         total = 0
         start = time.time()
-        for chunk in self.stream(chunk_size=self.chunk_size):
+        stream = self.make_stream()
+        for chunk in stream(chunk_size=self.chunk_size):
             self.observer()
             if chunk:
                 f.write(chunk)
@@ -130,9 +140,7 @@ class HTTPDownloaderBase(DownloaderBase):
         return self.headers()
 
     def out_of_date(self, path, cache_data):
-
         if cache_data is not None:
-
             # TODO: check 'cache-control' to see if we should check the etag
             if "cache-control" in cache_data:
                 pass
@@ -170,6 +178,9 @@ class HTTPDownloaderBase(DownloaderBase):
         return False
 
     def check_for_restarts(self, target):
+        if not self.resume_transfers:
+            return 0
+
         if not os.path.exists(target):
             return 0
 
@@ -202,7 +213,10 @@ class HTTPDownloaderBase(DownloaderBase):
         if bytes_ranges is not None:
             headers["range"] = bytes_ranges
 
-        r = self.robust(requests.get)(
+        LOG.debug("Issue request for %s", self.url)
+        LOG.debug("Headers: %s", json.dumps(headers, indent=4, sort_keys=True))
+
+        r = self.robust(self.session.get)(
             self.url,
             stream=True,
             verify=self.verify,
@@ -211,62 +225,26 @@ class HTTPDownloaderBase(DownloaderBase):
         )
         try:
             r.raise_for_status()
-        except Exception:
+        except Exception as e:
+            if (
+                isinstance(e, requests.HTTPError)
+                and e.response is not None
+                and e.response.status_code == requests.codes.not_found
+            ):
+                raise  # Keep quiet on 404s
             LOG.error("URL %s: %s", self.url, r.text)
             raise
         return r
 
     def robust(self, call):
-        def retriable(code):
-
-            return code in (
-                requests.codes.internal_server_error,
-                requests.codes.bad_gateway,
-                requests.codes.service_unavailable,
-                requests.codes.gateway_timeout,
-                requests.codes.too_many_requests,
-                requests.codes.request_timeout,
-            )
-
-        def wrapped(*args, **kwargs):
-            tries = 0
-            while tries < self.retry_max:
-                try:
-                    r = call(*args, **kwargs)
-                except (
-                    requests.exceptions.ConnectionError,
-                    requests.exceptions.ReadTimeout,
-                ) as e:
-                    r = None
-                    LOG.warning(
-                        "Recovering from connection error [%s], attemps %s of %s",
-                        e,
-                        tries,
-                        self.retry_max,
-                    )
-
-                if r is not None:
-                    if not retriable(r.status_code):
-                        return r
-                    LOG.warning(
-                        "Recovering from HTTP error [%s %s], attemps %s of %s",
-                        r.status_code,
-                        r.reason,
-                        tries,
-                        self.retry_max,
-                    )
-
-                tries += 1
-
-                LOG.warning("Retrying in %s seconds", self.sleep_max)
-                time.sleep(self.sleep_max)
-                LOG.info("Retrying now...")
-
-        return wrapped
+        return robust(call, self.maximum_retries, self.retry_after, self.mirrors)
 
 
 class FullHTTPDownloader(HTTPDownloaderBase):
-    def prepare(self, target):
+    def __repr__(self):
+        return f"FullHTTPDownloader({self.url})"
+
+    def estimate_size(self, target):
         assert self.parts is None
 
         size = None
@@ -286,20 +264,16 @@ class FullHTTPDownloader(HTTPDownloaderBase):
 
         # Check if we can restarts the transfer
 
-        range = None
+        self.range = None
         bytes = self.check_for_restarts(target)
         if bytes > 0:
             assert size is None or bytes < size, (bytes, size, self.url, target)
             skip = bytes
             mode = "ab"
-            range = f"bytes={bytes}-"
-
-        r = self.issue_request(range)
-
-        self.stream = r.iter_content
+            self.range = f"bytes={bytes}-"
 
         LOG.debug(
-            "url prepare size=%s mode=%s skip=%s trust_size=%s",
+            "url estimate_size size=%s mode=%s skip=%s trust_size=%s",
             size,
             mode,
             skip,
@@ -307,34 +281,29 @@ class FullHTTPDownloader(HTTPDownloaderBase):
         )
         return (size, mode, skip, trust_size)
 
+    def make_stream(self):
+        request = self.issue_request(self.range)
+        return request.iter_content
 
-class PartHTTPDownloader(HTTPDownloaderBase):
-    def prepare(self, target):
-        assert self.parts is not None
 
-        headers = self.headers()
-        if headers.get("accept-ranges") != "bytes":
-            return self.bytes_range_not_supported(target)
+class ServerDoesNotSupportPartsHTTPDownloader(HTTPDownloaderBase):
+    def __repr__(self):
+        return f"ServerDoesNotSupportPartsHTTPDownloader({self.url, self.parts})"
 
-        if len(self.parts) == 1:
-            return self.one_part_only(target)
-
-        return self.multi_parts(target)
-
-    def bytes_range_not_supported(self, target):
-        LOG.warning(
-            "Server for %s does not support byte ranges, downloading whole file",
-            self.url,
-        )
-
-        request = self.issue_request()
-        self.stream = PartFilter(self.parts)(request.iter_content)
-
+    def estimate_size(self, target):
         size = sum(p.length for p in self.parts)
         return (size, "wb", 0, True)
 
-    def one_part_only(self, target):
-        # Special case, we let HTTP to its job, so we can resume transfers if needed
+    def make_stream(self):
+        request = self.issue_request()
+        return PartFilter(self.parts)(request.iter_content)
+
+
+class SinglePartHTTPDownloader(HTTPDownloaderBase):
+    def __repr__(self):
+        return f"SinglePartHTTPDownloader({self.url, self.parts})"
+
+    def estimate_size(self, target):
         assert len(self.parts) == 1
 
         offset, length = self.parts[0]
@@ -349,12 +318,66 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             skip = 0
             mode = "wb"
 
-        bytes_range = f"bytes={start}-{end}"
-        request = self.issue_request(bytes_range)
-        self.stream = request.iter_content
+        self.bytes_range = f"bytes={start}-{end}"
 
         size = sum(p.length for p in self.parts)
         return (size, mode, skip, True)
+
+    def make_stream(self):
+        request = self.issue_request(self.bytes_range)
+        return request.iter_content
+
+
+class PartHTTPDownloader(HTTPDownloaderBase):
+    _server_capabilities = None
+
+    def __repr__(self):
+        return f"PartHTTPDownloader({self.url, self.parts})"
+
+    @property
+    def server_capabilities(self):
+        if self._server_capabilities is None:
+            self._server_capabilities = ServerCapabilities(
+                accept_ranges=False,
+                accept_multiple_ranges=None,
+            )
+            headers = self.headers()
+            if headers.get("accept-ranges") == "bytes":
+                self._server_capabilities.accept_ranges = True
+
+            # Special case for Azure
+            # The server does not announce byte-range support, but supports it
+            # The server will ignore multiple ranges and return everything
+            # https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations
+            if headers.get("server", "unknown").startswith("Windows-Azure-Blob"):
+                self._server_capabilities = ServerCapabilities(
+                    accept_ranges=True,
+                    accept_multiple_ranges=False,
+                )
+
+            # Special case for AWS
+            # The server will ignore multiple ranges and return everything
+            if headers.get("server", "unknown").startswith("AmazonS3"):
+                self._server_capabilities = ServerCapabilities(
+                    accept_ranges=True,
+                    accept_multiple_ranges=False,
+                )
+
+        return self._server_capabilities
+
+    def mutate(self, *args, **kwargs):
+        if not self.server_capabilities.accept_ranges:
+            LOG.warning(
+                "Server for %s does not support byte ranges, downloading whole file",
+                self.url,
+            )
+            return ServerDoesNotSupportPartsHTTPDownloader(*args, **kwargs)
+
+        if len(self.parts) == 1:
+            # Special case, we let HTTP to its job, so we can resume transfers if needed
+            return SinglePartHTTPDownloader(*args, **kwargs)
+
+        return self
 
     def split_large_requests(self, parts):
         ranges = []
@@ -373,15 +396,17 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             parts[middle:]
         )
 
-    def multi_parts(self, target):
+    def estimate_size(self, target):
+        size = sum(p.length for p in self.parts)
+        return (size, "wb", 0, True)
 
+    def make_stream(self):
         # TODO: implement transfer restarts by trimming the list of parts
 
         filter = NoFilter
         parts = self.parts
 
         if self.range_method:
-
             rounded, positions = compute_byte_ranges(
                 self.parts,
                 self.range_method,
@@ -392,12 +417,14 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             parts = rounded
 
         splits = self.split_large_requests(parts)
+        accept_multiple_ranges = self.server_capabilities.accept_multiple_ranges
 
         def iterate_requests(chunk_size):
-
             for bytes_ranges, parts in splits:
-
-                request = self.issue_request(bytes_ranges)
+                if accept_multiple_ranges is False:
+                    request = self.issue_request(bytes_ranges.split(",")[0])
+                else:
+                    request = self.issue_request(bytes_ranges)
 
                 stream = DecodeMultipart(
                     self.url,
@@ -410,7 +437,78 @@ class PartHTTPDownloader(HTTPDownloaderBase):
 
                 yield from stream(chunk_size)
 
-        self.stream = filter(iterate_requests)
+        return filter(iterate_requests)
 
-        size = sum(p.length for p in self.parts)
-        return (size, "wb", 0, True)
+
+RETRIABLE = (
+    requests.codes.internal_server_error,
+    requests.codes.bad_gateway,
+    requests.codes.service_unavailable,
+    requests.codes.gateway_timeout,
+    requests.codes.too_many_requests,
+    requests.codes.request_timeout,
+)
+
+
+def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
+    def retriable(code):
+        return code in RETRIABLE
+
+    def wrapped(url, *args, **kwargs):
+        tries = 0
+        main_url = url
+
+        while True:
+            tries += 1
+
+            if tries >= maximum_tries:
+                # Last attempt, don't do anything
+                return call(main_url, *args, **kwargs)
+
+            try:
+                r = call(main_url, *args, **kwargs)
+            except requests.exceptions.SSLError:
+                raise
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout,
+            ) as e:
+                r = None
+                LOG.warning(
+                    "Recovering from connection error [%s], attemps %s of %s",
+                    e,
+                    tries,
+                    maximum_tries,
+                )
+
+            if r is not None:
+                if not retriable(r.status_code):
+                    return r
+                LOG.warning(
+                    "Recovering from HTTP error [%s %s], attemps %s of %s",
+                    r.status_code,
+                    r.reason,
+                    tries,
+                    maximum_tries,
+                )
+
+            alternate = None
+            replace = 0
+            if mirrors is not None:
+                for key, values in mirrors.items():
+                    if url.startswith(key):
+                        alternate = values
+                        replace = len(key)
+                        if not isinstance(alternate, (list, tuple)):
+                            alternate = [alternate]
+
+            if alternate is not None:
+                mirror = random.choice(alternate)
+                LOG.warning("Retrying using mirror %s", mirror)
+                main_url = f"{mirror}{url[replace:]}"
+            else:
+                LOG.warning("Retrying in %s seconds", retry_after)
+                time.sleep(retry_after)
+                LOG.info("Retrying now...")
+
+    return wrapped

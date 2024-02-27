@@ -35,7 +35,6 @@ class NoBar:
 
 
 def progress_bar(total, initial=0, desc=None):
-
     try:
         # There is a bug in tqdm that expects ipywidgets
         # to be installed if running in a notebook
@@ -69,6 +68,9 @@ class DownloaderBase:
         observer=_ignore,
         statistics_gatherer=_ignore,
         progress_bar=progress_bar,
+        resume_transfers=False,
+        override_target_file=True,
+        download_file_extension=None,
         **kwargs,
     ):
         self.url = url
@@ -78,12 +80,20 @@ class DownloaderBase:
         self.observer = observer
         self.statistics_gatherer = statistics_gatherer
         self.progress_bar = progress_bar
+        self.resume_transfers = resume_transfers
+        self.override_target_file = override_target_file
+        self.download_file_extension = download_file_extension
+
+    def mutate(self, *args, **kwargs):
+        return self
 
     def local_path(self):
         return None
 
-    def extension(self):
-        url_no_args = self.url.split("?")[0]
+    def extension(self, url=None):
+        if url is None:
+            url = self.url
+        url_no_args = url.split("?")[0]
         base = os.path.basename(url_no_args)
         extensions = []
         while True:
@@ -95,24 +105,24 @@ class DownloaderBase:
             extensions.append(".unknown")
         return "".join(reversed(extensions))
 
-    def download(self, target, resume=False, override=True):
-        if os.path.exists(target) and not override:
+    def download(self, target):
+        if os.path.exists(target) and not self.override_target_file:
             return
 
-        download = target + ".download"
+        if self.download_file_extension is not None:
+            download = target + ".download"
+        else:
+            download = target
+
         LOG.info("Downloading %s", self.url)
 
-        size, mode, skip, trust_size = self.prepare(download)
-        if not resume:
-            skip = 0
-            mode = "wb"
+        size, mode, skip, trust_size = self.estimate_size(download)
 
         with self.progress_bar(
             total=size,
             initial=skip,
             desc=self.title(),
         ) as pbar:
-
             with open(download, mode) as f:
                 total = self.transfer(f, pbar)
 
@@ -123,7 +133,8 @@ class DownloaderBase:
                 os.path.getsize(download) == size
             ), f"File size mismatch {os.path.getsize(download)} bytes instead of {size}"
 
-        os.rename(download, target)
+        if download != target:
+            os.rename(download, target)
 
         self.finalise()
         return total

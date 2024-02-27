@@ -67,7 +67,6 @@ class BlockGrouping:
         last_offset = 0
 
         for offset, length in parts:
-
             assert offset >= last_offset
 
             block_offset = round_down(offset, self.block_size)

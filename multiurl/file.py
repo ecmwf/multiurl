@@ -8,6 +8,7 @@
 #
 
 import logging
+import os
 import sys
 from urllib.parse import urlparse
 
@@ -17,9 +18,6 @@ LOG = logging.getLogger(__name__)
 
 
 class FileDownloaderBase(DownloaderBase):
-
-    supports_parts = True
-
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
         o = urlparse(self.url)
@@ -41,9 +39,32 @@ class FullFileDownloader(FileDownloaderBase):
     def local_path(self):
         return self.path
 
+    def __repr__(self):
+        return f"FullFileDownloader({self.path})"
+
+    def estimate_size(self, target):
+        # TODO: resume transfers
+        size = os.path.getsize(self.path)
+        return (size, "wb", 0, True)
+
+    def transfer(self, f, pbar):
+        total = 0
+        with open(self.path, "rb") as g:
+            while True:
+                chunk = g.read(self.chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                pbar.update(len(chunk))
+                total += len(chunk)
+        return total
+
 
 class PartFileDownloader(FileDownloaderBase):
-    def prepare(self, target):
+    def __repr__(self):
+        return f"PartFileDownloader({self.path, self.parts})"
+
+    def estimate_size(self, target):
         parts = self.parts
         size = sum(p.length for p in parts)
         return (size, "wb", 0, True)

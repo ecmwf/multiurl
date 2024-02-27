@@ -74,7 +74,9 @@ class S3Streamer:
 class MultiPartStreamer:
     def __init__(self, url, request, parts, boundary, **kwargs):
         self.request = request
-        self.size = int(request.headers["content-length"])
+        self.size = None
+        if "content-length" in request.headers:
+            self.size = int(request.headers["content-length"])
         self.encoding = "utf-8"
         self.parts = parts
         self.boundary = boundary
@@ -114,11 +116,12 @@ class MultiPartStreamer:
                 break
 
             pos = chunk.find(marker)
-            assert pos == 0, (pos, chunk)
+            assert pos == 0, (pos, marker, chunk)
 
             chunk = chunk[pos + len(marker) :]
             while True:
                 pos = chunk.find(end_header)
+                LOG.debug("FIND %s %s", end_header, chunk[:80])
                 if pos != -1:
                     break
                 more = next(iter_content)
@@ -160,13 +163,20 @@ class MultiPartStreamer:
                     size -= len(chunk)
                     chunk = next(iter_content)
 
-            assert chunk.find(end_data) == 0
+            if len(chunk) == 0:
+                chunk = next(iter_content)
+                assert chunk
+
+            assert chunk.find(end_data) == 0, chunk
             chunk = chunk[len(end_data) :]
             part += 1
 
 
 class DecodeMultipart:
     def __init__(self, url, request, parts, **kwargs):
+        LOG.debug("URL: %s", url)
+
+        LOG.debug("RESPONSE Headers: %s", request.headers)
         self.request = request
         assert request.status_code == 206, request.status_code
 
@@ -174,10 +184,10 @@ class DecodeMultipart:
 
         if content_type.startswith("multipart/byteranges; boundary="):
             _, boundary = content_type.split("=")
-            # print("******  MULTI-PART supported by server", url)
+            LOG.debug("******  MULTI-PART supported by server %s", url)
             self.streamer = MultiPartStreamer(url, request, parts, boundary, **kwargs)
         else:
-            # print("******  MULTI-PART *NOT* supported by server", url)
+            LOG.debug("******  MULTI-PART *NOT* supported by server %s", url)
             self.streamer = S3Streamer(url, request, parts, **kwargs)
 
     def __call__(self, chunk_size):
@@ -254,7 +264,6 @@ def compress_parts(parts):
 
 
 def compute_byte_ranges(parts, method, url, statistics_gatherer):
-
     if callable(method):
         blocks = method(parts)
     else:

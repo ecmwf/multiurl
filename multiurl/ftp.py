@@ -10,7 +10,7 @@
 
 import logging
 import os
-from ftplib import FTP
+from ftplib import FTP, error_perm
 from urllib.parse import urlparse
 
 from .base import DownloaderBase
@@ -19,40 +19,32 @@ LOG = logging.getLogger(__name__)
 
 
 class FTPDownloaderBase(DownloaderBase):
-
-    supports_parts = False
-
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
 
-    def prepare(self, target):
+    def estimate_size(self, target):
+        url_object = urlparse(self.url)
+        assert url_object.scheme == "ftp"
 
-        o = urlparse(self.url)
-        assert o.scheme == "ftp"
+        user, password = url_object.username, url_object.password
 
-        if "@" in o.netloc:
-            auth, server = o.netloc.split("@")
-            user, password = auth.split(":")
-        else:
-            auth, server = None, o.netloc
-            user, password = "anonymous", "anonymous"
+        ftp = FTP(timeout=self.timeout)
+        connect_kwargs = {}
+        if url_object.port is not None:
+            connect_kwargs["port"] = url_object.port
+        ftp.connect(host=url_object.hostname, **connect_kwargs)
 
-        ftp = FTP(
-            server,
-            timeout=self.timeout,
-        )
+        ftp.login(user, password)
 
-        if auth:
-            ftp.login(user, password)
-        else:
-            ftp.login()
-
-        ftp.cwd(os.path.dirname(o.path))
+        ftp.cwd(os.path.dirname(url_object.path))
         ftp.set_pasv(True)
-        self.filename = os.path.basename(o.path)
+        self.filename = os.path.basename(url_object.path)
         self.ftp = ftp
 
-        return (ftp.size(self.filename), "wb", 0, True)
+        try:
+            return (ftp.size(self.filename), "wb", 0, True)
+        except error_perm:
+            return (-1, "wb", True, False)
 
     def transfer(self, f, pbar):
         total = 0
@@ -71,10 +63,14 @@ class FTPDownloaderBase(DownloaderBase):
 
 
 class FullFTPDownloader(FTPDownloaderBase):
-    pass
+    def __repr__(self):
+        return f"FullFTPDownloader({self.url})"
 
 
 class PartFTPDownloader(FTPDownloaderBase):
     def __init__(self, url, **kwargs):
         # If needed, that can be implemented with the PartFilter
         raise NotImplementedError("Part FTPDownloader is not yet implemented")
+
+    def __repr__(self):
+        return f"PartFTPDownloader({self.url, self.parts})"

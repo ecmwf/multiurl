@@ -134,3 +134,8 @@ test.py
 .vscode/
 target
 data
+*.download
+*.data
+*.bufr
+*.grib
+*.grib2
