@@ -46,7 +46,7 @@ def test_auth_single_parts():
         assert f.read() == b"BUFR"
 
 
-def test_auth_single_parts():
+def test_auth_single_multi_parts():
     auth = Auth()
     url = "http://get.ecmwf.int/test-data/metview/gallery/temp.bufr"
 
