@@ -222,6 +222,7 @@ class HTTPDownloaderBase(DownloaderBase):
             verify=self.verify,
             timeout=self.timeout,
             headers=headers,
+            auth=self.auth,
         )
         try:
             r.raise_for_status()
