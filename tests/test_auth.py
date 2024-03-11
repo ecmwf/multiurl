@@ -18,10 +18,13 @@ from multiurl import download
 
 class Auth:
     def __init__(self):
-        self.urls = []
+        from collections import defaultdict
+
+        self.calls = defaultdict(set)
 
     def __call__(self, r):
-        self.urls.append(r.url)
+        method = r.method.lower()
+        self.calls[method].add(r.url)
         return r
 
 
@@ -30,7 +33,17 @@ def test_auth_single():
     url = "http://get.ecmwf.int/test-data/metview/gallery/temp.bufr"
     download(url=url, target="out.data", auth=auth)
 
-    assert auth.urls == [url]
+    assert auth.calls["head"] == set([url])
+    assert auth.calls["get"] == set([url])
+
+
+def test_auth_single_fake_headers():
+    auth = Auth()
+    url = "http://get.ecmwf.int/test-data/metview/gallery/temp.bufr"
+    download(url=url, target="out.data", auth=auth, fake_headers={})
+
+    assert auth.calls["head"] == set()
+    assert auth.calls["get"] == set([url])
 
 
 def test_auth_single_parts():
@@ -39,7 +52,8 @@ def test_auth_single_parts():
 
     download(url=url, target="out.data", parts=((0, 4),), auth=auth)
 
-    assert auth.urls == [url]
+    assert auth.calls["head"] == set([url])
+    assert auth.calls["get"] == set([url])
     assert os.path.getsize("out.data") == 4
 
     with open("out.data", "rb") as f:
@@ -52,7 +66,8 @@ def test_auth_single_multi_parts():
 
     download(url=url, target="out.data", parts=((0, 4), (20, 4)), auth=auth)
 
-    assert auth.urls == [url]
+    assert auth.calls["head"] == set([url])
+    assert auth.calls["get"] == set([url])
     assert os.path.getsize("out.data") == 8
 
     with open("out.data", "rb") as f:
@@ -68,7 +83,8 @@ def test_auth_multi():
 
     download(url=urls, target="out.data", auth=auth)
 
-    assert auth.urls == urls
+    assert auth.calls["head"] == set(urls)
+    assert auth.calls["get"] == set(urls)
     assert os.path.getsize("out.data") == 2492
 
     with open("out.data", "rb") as f:
@@ -84,7 +100,8 @@ def test_auth_multi_parts():
 
     download(url=urls, target="out.data", parts=((0, 4),), auth=auth)
 
-    assert auth.urls == urls
+    assert auth.calls["head"] == set(urls)
+    assert auth.calls["get"] == set(urls)
     assert os.path.getsize("out.data") == 8
 
     with open("out.data", "rb") as f:
