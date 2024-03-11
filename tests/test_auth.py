@@ -106,6 +106,7 @@ def test_auth_multi_parts():
 
     with open("out.data", "rb") as f:
         assert f.read(4) == b"GRIB"
+        assert f.read(4) == b"GRIB"
 
 
 if __name__ == "__main__":
