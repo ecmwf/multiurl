@@ -71,6 +71,7 @@ class DownloaderBase:
         resume_transfers=False,
         override_target_file=True,
         download_file_extension=None,
+        auth=None,
         **kwargs,
     ):
         self.url = url
@@ -83,6 +84,7 @@ class DownloaderBase:
         self.resume_transfers = resume_transfers
         self.override_target_file = override_target_file
         self.download_file_extension = download_file_extension
+        self.auth = auth
 
     def mutate(self, *args, **kwargs):
         return self
