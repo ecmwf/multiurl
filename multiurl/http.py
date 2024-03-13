@@ -75,6 +75,7 @@ class HTTPDownloaderBase(DownloaderBase):
                         verify=self.verify,
                         timeout=self.timeout,
                         allow_redirects=True,
+                        auth=self.auth,
                     )
                     r.raise_for_status()
                     for k, v in r.headers.items():
@@ -222,6 +223,7 @@ class HTTPDownloaderBase(DownloaderBase):
             verify=self.verify,
             timeout=self.timeout,
             headers=headers,
+            auth=self.auth,
         )
         try:
             r.raise_for_status()

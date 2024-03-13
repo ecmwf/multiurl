@@ -9,6 +9,7 @@
 
 import logging
 import os
+
 import pytest
 
 from multiurl import Downloader, download
