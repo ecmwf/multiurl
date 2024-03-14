@@ -10,7 +10,7 @@
 
 from .downloader import Downloader, download, robust
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "download",
