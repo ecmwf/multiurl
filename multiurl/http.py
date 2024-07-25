@@ -477,7 +477,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
             ) as e:
                 r = None
                 LOG.warning(
-                    "Recovering from connection error [%s], attemps %s of %s",
+                    "Recovering from connection error [%s], attempt %s of %s",
                     e,
                     tries,
                     maximum_tries,
@@ -487,7 +487,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 if not retriable(r.status_code):
                     return r
                 LOG.warning(
-                    "Recovering from HTTP error [%s %s], attemps %s of %s",
+                    "Recovering from HTTP error [%s %s], attempt %s of %s",
                     r.status_code,
                     r.reason,
                     tries,
