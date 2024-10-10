@@ -37,8 +37,9 @@ def NoFilter(x):
 def parse_separated_header(value: str):
     """Adapted from https://peps.python.org/pep-0594/#cgi."""
     from email.message import Message
+
     m = Message()
-    m['content-type'] = value
+    m["content-type"] = value
     return dict(m.get_params())
 
 
