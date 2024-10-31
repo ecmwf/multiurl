@@ -40,7 +40,8 @@ def parse_separated_header(value: str):
 
     m = Message()
     m["content-type"] = value
-    return dict(m.get_params())
+    e1, e2 = m.get_params()
+    return e1[0], dict([e2])
 
 
 class HTTPDownloaderBase(DownloaderBase):
