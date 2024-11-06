@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-from multiurl import Downloader, download, multiurl
+from multiurl import Downloader, download
 from multiurl.http import FullHTTPDownloader
 
 def test_http():
