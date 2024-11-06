@@ -9,7 +9,6 @@
 
 import logging
 import os
-from pathlib import Path
 
 import pytest
 
@@ -86,7 +85,7 @@ def test_content_disposition_handling():
             headers["content-disposition"] = 'attachment; filename="temp.bufr"'
             return headers
 
-    test_DL = TestDownloader(
+    TestDownloader(
         url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
     ).download(target="out")
 
