@@ -9,11 +9,13 @@
 
 import logging
 import os
+from pathlib import Path
 
 import pytest
 
 from multiurl import Downloader, download
 from multiurl.http import FullHTTPDownloader
+
 
 def test_http():
     Downloader("http://localhost")
@@ -77,18 +79,17 @@ def test_order():
         assert f.read()[:4] == b"BUFR"
 
 
-def test_download_file_with_content_disposition():
+def test_content_disposition_handling():
     class TestDownloader(FullHTTPDownloader):
         def headers(self):
             headers = super().headers()
-            headers["content-disposition"] = 'attachment; filename="temp2.bufr"'
+            headers["content-disposition"] = 'attachment; filename="temp.bufr"'
             return headers
-    TestDownloader(
+
+    test_DL = TestDownloader(
         url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
-    ).download(
-        target="out",
-    )
-    
+    ).download(target="out")
+
 
 @pytest.mark.skip(reason="ftpserver not defined")
 def test_ftp_download(tmp_path, ftpserver):
