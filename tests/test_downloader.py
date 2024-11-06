@@ -77,7 +77,7 @@ def test_order():
         assert f.read()[:4] == b"BUFR"
 
 
-def test_content_disposition_handling():
+def test_download_file_with_content_disposition():
     class TestDownloader(FullHTTPDownloader):
         def headers(self):
             headers = super().headers()
@@ -85,7 +85,9 @@ def test_content_disposition_handling():
             return headers
     test_DL = TestDownloader(
         url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
-    ).download(target="out")
+    ).download(
+        target="out",
+    )
     
 
     # with open("out", "rb") as f:
