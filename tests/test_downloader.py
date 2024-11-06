@@ -83,15 +83,12 @@ def test_download_file_with_content_disposition():
             headers = super().headers()
             headers["content-disposition"] = 'attachment; filename="temp2.bufr"'
             return headers
-    test_DL = TestDownloader(
+    TestDownloader(
         url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
     ).download(
         target="out",
     )
     
-
-    # with open("out", "rb") as f:
-    #     assert f.read()[:4] == b"BUFR"
 
 @pytest.mark.skip(reason="ftpserver not defined")
 def test_ftp_download(tmp_path, ftpserver):
