@@ -111,8 +111,8 @@ class HTTPDownloaderBase(DownloaderBase):
             headers = self.headers()
 
             if "content-disposition" in headers:
-                value, params = parse_separated_header(headers["content-disposition"])
-                assert value == "attachment", value
+                params = parse_separated_header(headers["content-disposition"])
+                assert "attachment" in params, params
                 if "filename" in params:
                     ext = super().extension(params["filename"])
 
@@ -121,7 +121,7 @@ class HTTPDownloaderBase(DownloaderBase):
     def title(self):
         headers = self.headers()
         if "content-disposition" in headers:
-            value, params = parse_separated_header(headers["content-disposition"])
+            params = parse_separated_header(headers["content-disposition"])
             if "filename" in params:
                 return params["filename"]
         return super().title()
