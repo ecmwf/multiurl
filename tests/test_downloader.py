@@ -13,6 +13,7 @@ import os
 import pytest
 
 from multiurl import Downloader, download
+from multiurl.http import FullHTTPDownloader
 
 
 def test_http():
@@ -75,6 +76,18 @@ def test_order():
 
     with open("out.data", "rb") as f:
         assert f.read()[:4] == b"BUFR"
+
+
+def test_content_disposition_handling():
+    class TestDownloader(FullHTTPDownloader):
+        def headers(self):
+            headers = super().headers()
+            headers["content-disposition"] = 'attachment; filename="temp.bufr"'
+            return headers
+
+    TestDownloader(
+        url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
+    ).download(target="out")
 
 
 @pytest.mark.skip(reason="ftpserver not defined")
