@@ -7,7 +7,6 @@
 # nor does it submit to any jurisdiction.
 #
 
-import cgi
 import datetime
 import json
 import logging
@@ -33,6 +32,15 @@ class ServerCapabilities:
 
 def NoFilter(x):
     return x
+
+
+def parse_separated_header(value: str):
+    """Adapted from https://peps.python.org/pep-0594/#cgi."""
+    from email.message import Message
+
+    m = Message()
+    m["content-type"] = value
+    return dict(m.get_params())
 
 
 class HTTPDownloaderBase(DownloaderBase):
@@ -103,8 +111,8 @@ class HTTPDownloaderBase(DownloaderBase):
             headers = self.headers()
 
             if "content-disposition" in headers:
-                value, params = cgi.parse_header(headers["content-disposition"])
-                assert value == "attachment", value
+                params = parse_separated_header(headers["content-disposition"])
+                assert "attachment" in params, params
                 if "filename" in params:
                     ext = super().extension(params["filename"])
 
@@ -113,7 +121,7 @@ class HTTPDownloaderBase(DownloaderBase):
     def title(self):
         headers = self.headers()
         if "content-disposition" in headers:
-            value, params = cgi.parse_header(headers["content-disposition"])
+            params = parse_separated_header(headers["content-disposition"])
             if "filename" in params:
                 return params["filename"]
         return super().title()
