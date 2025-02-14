@@ -73,7 +73,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+        pip install setuptools build wheel twine
 
     - name: Check that tag version matches code version
       run: |
@@ -89,4 +89,5 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         python setup.py sdist
+        python -m build
         twine upload dist/*
