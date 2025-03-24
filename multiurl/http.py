@@ -460,7 +460,9 @@ RETRIABLE = (
 )
 
 
-def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
+def robust(
+    call, maximum_tries=500, retry_after=120, mirrors=None, respect_retry_header=False
+):
     def retriable(code):
         return code in RETRIABLE
 
@@ -517,6 +519,29 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 LOG.warning("Retrying using mirror %s", mirror)
                 main_url = f"{mirror}{url[replace:]}"
             else:
+                nonlocal retry_after
+                retry_header = getattr(r, "headers", {}).get("Retry-After")
+                if respect_retry_header and retry_header is not None:
+                    try:
+                        # seconds
+                        retry_after = int(retry_header)
+                    except ValueError:
+                        try:
+                            # http date
+                            retry_date = datetime.datetime.strptime(
+                                retry_header, "%a, %d %b %Y %H:%M:%S GMT"
+                            )
+
+                            gmt = pytz.timezone("GMT")
+                            now = datetime.datetime.now(gmt)
+                            retry_date = gmt.localize(retry_date)
+                            retry_sec = (retry_date - now).total_seconds()
+
+                            if retry_sec > 0:
+                                retry_after = retry_sec
+                        except Exception:
+                            pass
+
                 LOG.warning("Retrying in %s seconds", retry_after)
                 time.sleep(retry_after)
                 LOG.info("Retrying now...")
