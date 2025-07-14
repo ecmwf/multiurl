@@ -6,7 +6,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
-import requests
 import logging
 import os
 import random
@@ -14,6 +13,7 @@ import threading
 from contextlib import contextmanager
 
 import pytest
+import requests
 
 from multiurl import download
 from multiurl.http import RETRIABLE, robust
