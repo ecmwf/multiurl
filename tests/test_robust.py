@@ -66,6 +66,14 @@ def test_robust():
                 ("multiurl.http", 30, "Retrying in 0.2 seconds"),
             ],
         ],
+        [
+            (0.1, 0.2, 0.5),
+            [
+                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+            ],
+        ],
     ],
 )
 def test_robust_incremental_sleep(caplog, retry_after, expected_logs):
