@@ -392,7 +392,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
     def split_large_requests(self, parts):
         ranges = []
         for offset, length in parts:
-            ranges.append(f"{offset}-{offset+length-1}")
+            ranges.append(f"{offset}-{offset + length - 1}")
 
         # Nginx default is 4K
         # https://stackoverflow.com/questions/686217/maximum-on-http-header-values
@@ -474,7 +474,12 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
             sleep_min = sleep_max = retry_after
             sleep_incremental_ratio = 1
 
-        assert (0 <= sleep_min <= sleep_max) and sleep_incremental_ratio > 0
+        assert sleep_incremental_ratio > 0
+        assert (
+            sleep_min == sleep_max
+            if sleep_incremental_ratio == 1
+            else (0 <= sleep_min <= sleep_max)
+        )
         sleep = sleep_min if sleep_incremental_ratio >= 1 else sleep_max
 
         while True:
