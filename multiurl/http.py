@@ -478,7 +478,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
         assert (
             sleep_min == sleep_max
             if sleep_incremental_ratio == 1
-            else (0 <= sleep_min <= sleep_max)
+            else (0 <= sleep_min < sleep_max)
         )
         sleep = sleep_min if sleep_incremental_ratio >= 1 else sleep_max
 
