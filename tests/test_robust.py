@@ -14,9 +14,10 @@ import threading
 from contextlib import contextmanager
 
 import pytest
+import requests
 
 from multiurl import download
-from multiurl.http import RETRIABLE
+from multiurl.http import RETRIABLE, robust
 
 
 def handler(signum, frame):
@@ -45,6 +46,42 @@ def test_robust():
             retry_after=sleep,
             target="test.data",
         )
+
+
+@pytest.mark.parametrize(
+    "retry_after,expected_logs",
+    [
+        [
+            0.1,
+            [
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+            ],
+        ],
+        [
+            (0.1, 0.2, 2),
+            [
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
+            ],
+        ],
+        [
+            (0.1, 0.2, 0.5),
+            [
+                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+            ],
+        ],
+    ],
+)
+def test_robust_incremental_sleep(caplog, retry_after, expected_logs):
+    robust_get = robust(requests.get, retry_after=retry_after, maximum_tries=4)
+    codes = ",".join(map(str, RETRIABLE))
+    robust_get(f"http://httpbin.org/status/{codes}")
+    assert caplog.record_tuples[1::2] == expected_logs
 
 
 @pytest.mark.skipif(True, reason="Mirror disabled")

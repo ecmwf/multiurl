@@ -468,6 +468,22 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
         tries = 0
         main_url = url
 
+        if isinstance(retry_after, (list, tuple)):
+            sleep_min, sleep_max, sleep_incremental_ratio = retry_after
+        elif isinstance(retry_after, (int, float)):
+            sleep_min = sleep_max = retry_after
+            sleep_incremental_ratio = 1
+        else:
+            raise TypeError("retry_after must be int, float, tuple, or list")
+
+        assert sleep_min >= 0 and sleep_incremental_ratio > 0
+        assert (
+            sleep_min == sleep_max
+            if sleep_incremental_ratio == 1
+            else sleep_min < sleep_max
+        )
+        sleep = sleep_min if sleep_incremental_ratio >= 1 else sleep_max
+
         while True:
             tries += 1
 
@@ -517,8 +533,13 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 LOG.warning("Retrying using mirror %s", mirror)
                 main_url = f"{mirror}{url[replace:]}"
             else:
-                LOG.warning("Retrying in %s seconds", retry_after)
-                time.sleep(retry_after)
+                LOG.warning("Retrying in %s seconds", sleep)
+                time.sleep(sleep)
+                sleep = (
+                    min(sleep * sleep_incremental_ratio, sleep_max)
+                    if sleep_incremental_ratio >= 1
+                    else max(sleep_min, sleep * sleep_incremental_ratio)
+                )
                 LOG.info("Retrying now...")
 
     return wrapped
