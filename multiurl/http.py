@@ -392,7 +392,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
     def split_large_requests(self, parts):
         ranges = []
         for offset, length in parts:
-            ranges.append(f"{offset}-{offset + length - 1}")
+            ranges.append(f"{offset}-{offset+length-1}")
 
         # Nginx default is 4K
         # https://stackoverflow.com/questions/686217/maximum-on-http-header-values
