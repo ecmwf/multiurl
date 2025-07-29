@@ -460,7 +460,18 @@ RETRIABLE = (
 )
 
 
-def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
+def robust(
+    call,
+    maximum_retries: int = None,
+    retry_after: int = 120,
+    mirrors: dict = None,
+    maximum_tries: int = None
+):
+    
+    # Clear up confusion between maximum_tries and maximum_retries
+    #  maximum_retries is the supprted kwarg, maximum_tries is for backward compatibility
+    maximum_retries = maximum_retries or maximum_tries or 500
+    
     def retriable(code):
         return code in RETRIABLE
 
@@ -487,7 +498,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
         while True:
             tries += 1
 
-            if tries >= maximum_tries:
+            if tries >= maximum_retries:
                 # Last attempt, don't do anything
                 return call(main_url, *args, **kwargs)
 
@@ -505,7 +516,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                     "Recovering from connection error [%s], attempt %s of %s",
                     e,
                     tries,
-                    maximum_tries,
+                    maximum_retries,
                 )
 
             if r is not None:
@@ -516,7 +527,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                     r.status_code,
                     r.reason,
                     tries,
-                    maximum_tries,
+                    maximum_retries,
                 )
 
             alternate = None
