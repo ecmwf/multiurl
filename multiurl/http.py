@@ -392,7 +392,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
     def split_large_requests(self, parts):
         ranges = []
         for offset, length in parts:
-            ranges.append(f"{offset}-{offset+length-1}")
+            ranges.append(f"{offset}-{offset + length - 1}")
 
         # Nginx default is 4K
         # https://stackoverflow.com/questions/686217/maximum-on-http-header-values
@@ -498,6 +498,7 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
             except (
                 requests.exceptions.ConnectionError,
                 requests.exceptions.ReadTimeout,
+                requests.exceptions.ChunkedEncodingError,
             ) as e:
                 r = None
                 LOG.warning(
