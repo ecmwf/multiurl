@@ -465,7 +465,13 @@ def _logged_sleep(seconds):
     time.sleep(seconds)
 
 
-def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
+def robust(
+    call,
+    maximum_tries=500,
+    retry_after=120,
+    mirrors=None,
+    use_server_retry_after=False,
+):
     def retriable(code):
         return code in RETRIABLE
 
@@ -540,7 +546,11 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 main_url = f"{mirror}{url[replace:]}"
             else:
                 server_sleep = None
-                if r is not None and "retry-after" in r.headers:
+                if (
+                    use_server_retry_after
+                    and r is not None
+                    and "retry-after" in r.headers
+                ):
                     try:
                         server_sleep = float(r.headers["retry-after"])
                     except ValueError:
