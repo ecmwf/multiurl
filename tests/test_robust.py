@@ -113,7 +113,7 @@ def test_robust_use_server_retry_after(caplog, use_server_retry_after, expected_
         retry_after=0.2,
         use_server_retry_after=use_server_retry_after,
     )
-    robust_get(f"http://httpbin.org/status/429")
+    robust_get("http://httpbin.org/status/429")
     assert caplog.record_tuples[-1][-1] == expected_log
 
 
