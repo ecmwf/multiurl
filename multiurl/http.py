@@ -460,7 +460,18 @@ RETRIABLE = (
 )
 
 
-def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
+def _logged_sleep(seconds):
+    LOG.warning(f"Retrying in {seconds} seconds")
+    time.sleep(seconds)
+
+
+def robust(
+    call,
+    maximum_tries=500,
+    retry_after=120,
+    mirrors=None,
+    use_server_retry_after=False,
+):
     def retriable(code):
         return code in RETRIABLE
 
@@ -534,13 +545,26 @@ def robust(call, maximum_tries=500, retry_after=120, mirrors=None):
                 LOG.warning("Retrying using mirror %s", mirror)
                 main_url = f"{mirror}{url[replace:]}"
             else:
-                LOG.warning("Retrying in %s seconds", sleep)
-                time.sleep(sleep)
-                sleep = (
-                    min(sleep * sleep_incremental_ratio, sleep_max)
-                    if sleep_incremental_ratio >= 1
-                    else max(sleep_min, sleep * sleep_incremental_ratio)
-                )
+                server_sleep = None
+                if (
+                    use_server_retry_after
+                    and r is not None
+                    and "retry-after" in r.headers
+                ):
+                    try:
+                        server_sleep = float(r.headers["retry-after"])
+                    except ValueError:
+                        pass
+
+                if server_sleep is not None:
+                    _logged_sleep(server_sleep)
+                else:
+                    _logged_sleep(sleep)
+                    sleep = (
+                        min(sleep * sleep_incremental_ratio, sleep_max)
+                        if sleep_incremental_ratio >= 1
+                        else max(sleep_min, sleep * sleep_incremental_ratio)
+                    )
                 LOG.info("Retrying now...")
 
     return wrapped

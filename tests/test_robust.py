@@ -97,6 +97,26 @@ def test_mirror():
     )
 
 
+@pytest.mark.parametrize(
+    "use_server_retry_after,expected_log",
+    [(True, "Retrying in 0.1 seconds"), (False, "Retrying in 0.2 seconds")],
+)
+def test_robust_use_server_retry_after(caplog, use_server_retry_after, expected_log):
+    def patched_get(*args, **kwargs):
+        r = requests.get(*args, **kwargs)
+        r.headers["Retry-After"] = "0.1"
+        return r
+
+    robust_get = robust(
+        patched_get,
+        maximum_tries=2,
+        retry_after=0.2,
+        use_server_retry_after=use_server_retry_after,
+    )
+    robust_get("http://httpbin.org/status/429")
+    assert caplog.record_tuples[-1][-1] == expected_log
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     test_mirror()
