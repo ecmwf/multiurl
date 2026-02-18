@@ -34,7 +34,7 @@ class NoBar:
         pass
 
 
-def progress_bar(total, disable, initial=0, desc=None):
+def progress_bar(total, initial=0, desc=None, disable=False):
     try:
         # There is a bug in tqdm that expects ipywidgets
         # to be installed if running in a notebook
@@ -123,9 +123,9 @@ class DownloaderBase:
 
         with self.progress_bar(
             total=size,
-            disable=disable_progress_bar,
             initial=skip,
-            desc=self.title()
+            desc=self.title(),
+            disable=disable_progress_bar,
         ) as pbar:
             with open(download, mode) as f:
                 total = self.transfer(f, pbar)
