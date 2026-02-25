@@ -11,9 +11,11 @@ import logging
 import os
 
 import pytest
+from tqdm.std import tqdm
 
 from multiurl import Downloader, download
 from multiurl.http import FullHTTPDownloader
+from multiurl.base import progress_bar, NoBar
 
 
 def test_http():
@@ -108,6 +110,13 @@ def test_ftp_download(tmp_path, ftpserver):
     with open(local_test_file) as original, open(local_test_download) as downloaded:
         assert original.read() == downloaded.read()
 
+
+def test_progress_bar():
+    bar = progress_bar(10, False, 5)
+    assert isinstance(bar, tqdm)
+
+    nobar = progress_bar(10, True, 5)
+    assert isinstance(nobar, NoBar)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
