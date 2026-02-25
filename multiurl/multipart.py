@@ -21,6 +21,7 @@ class S3Streamer:
     def __init__(self, url, request, parts, headers, **kwargs):
         self.url = url
         self.parts = parts
+        self.session = requests.session()
         self.request = request
         self.headers = dict(**headers)
         self.kwargs = kwargs
@@ -37,7 +38,7 @@ class S3Streamer:
             else:
                 offset, length = part
                 headers["range"] = f"bytes={offset}-{offset+length-1}"
-                request = requests.get(
+                request = self.session.get(
                     self.url,
                     stream=True,
                     headers=headers,
