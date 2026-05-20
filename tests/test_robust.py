@@ -17,7 +17,7 @@ import pytest
 import requests
 
 from multiurl import download
-from multiurl.http import RETRIABLE, robust
+from multiurl.retry import RETRIABLE, robust
 
 
 def handler(signum, frame):
@@ -54,25 +54,25 @@ def test_robust():
         [
             0.1,
             [
-                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
-                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
-                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.1 seconds"),
             ],
         ],
         [
             (0.1, 0.2, 2),
             [
-                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
-                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
-                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.2 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.2 seconds"),
             ],
         ],
         [
             (0.1, 0.2, 0.5),
             [
-                ("multiurl.http", 30, "Retrying in 0.2 seconds"),
-                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
-                ("multiurl.http", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.2 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.1 seconds"),
+                ("multiurl.retry", 30, "Retrying in 0.1 seconds"),
             ],
         ],
     ],

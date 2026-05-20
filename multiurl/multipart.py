@@ -8,21 +8,33 @@
 #
 import logging
 import re
-
 import requests
 
 from .heuristics import Part, parts_heuristics
+from .retry import robust
 
 LOG = logging.getLogger(__name__)
 
 
 # S3 does not support multiple ranges
 class S3Streamer:
-    def __init__(self, url, request, parts, headers, **kwargs):
+    def __init__(self, 
+        url,
+        request,
+        parts,
+        headers,
+        retry_after=120,
+        maximum_retries=500,
+        mirrors=None,
+        **kwargs
+    ):
         self.url = url
         self.parts = parts
         self.request = request
         self.headers = dict(**headers)
+        self.retry_after = retry_after
+        self.maximum_retries = maximum_retries
+        self.mirrors = mirrors
         self.kwargs = kwargs
 
     def __call__(self, chunk_size):
@@ -37,7 +49,7 @@ class S3Streamer:
             else:
                 offset, length = part
                 headers["range"] = f"bytes={offset}-{offset+length-1}"
-                request = requests.get(
+                request = self.robust(requests.get)(
                     self.url,
                     stream=True,
                     headers=headers,
@@ -69,6 +81,9 @@ class S3Streamer:
             )
 
             yield from request.iter_content(chunk_size)
+    
+    def robust(self, call):
+        return robust(call, self.maximum_retries, self.retry_after, self.mirrors)
 
 
 class MultiPartStreamer:
