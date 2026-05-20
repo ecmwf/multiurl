@@ -349,11 +349,12 @@ class PartHTTPDownloader(HTTPDownloaderBase):
         if self._server_capabilities is None:
             self._server_capabilities = ServerCapabilities(
                 accept_ranges=False,
-                accept_multiple_ranges=None,
+                accept_multiple_ranges=False,
             )
             headers = self.headers()
             if headers.get("accept-ranges") == "bytes":
                 self._server_capabilities.accept_ranges = True
+                self._server_capabilities.accept_multiple_ranges = True
 
             # Special case for Azure
             # The server does not announce byte-range support, but supports it
@@ -368,6 +369,14 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             # Special case for AWS
             # The server will ignore multiple ranges and return everything
             if headers.get("server", "unknown").startswith("AmazonS3"):
+                self._server_capabilities = ServerCapabilities(
+                    accept_ranges=True,
+                    accept_multiple_ranges=False,
+                )
+            
+            # Special case for Google
+            # The server fails on multiple ranges
+            if headers.get("server", "unknown").startswith("UploadServer"):
                 self._server_capabilities = ServerCapabilities(
                     accept_ranges=True,
                     accept_multiple_ranges=False,
@@ -431,10 +440,10 @@ class PartHTTPDownloader(HTTPDownloaderBase):
 
         def iterate_requests(chunk_size):
             for bytes_ranges, parts in splits:
-                if accept_multiple_ranges is False:
-                    request = self.issue_request(bytes_ranges.split(",")[0])
-                else:
+                if accept_multiple_ranges:
                     request = self.issue_request(bytes_ranges)
+                else:
+                    request = self.issue_request(bytes_ranges.split(",")[0])
 
                 stream = DecodeMultipart(
                     self.url,
