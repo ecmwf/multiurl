@@ -13,10 +13,12 @@ import logging
 import os
 import random
 import time
-
 import pytz
 import requests
+
+from dataclasses import dataclass
 from dateutil.parser import parse as parse_date
+from typing import Optional
 
 from .base import DownloaderBase
 from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
@@ -24,10 +26,10 @@ from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
 LOG = logging.getLogger(__name__)
 
 
+@dataclass
 class ServerCapabilities:
-    def __init__(self, accept_ranges, accept_multiple_ranges):
-        self.accept_ranges = accept_ranges
-        self.accept_multiple_ranges = accept_multiple_ranges
+    accept_ranges: bool
+    accept_multiple_ranges: bool
 
 
 def NoFilter(x):
@@ -337,42 +339,80 @@ class SinglePartHTTPDownloader(HTTPDownloaderBase):
         request = self.issue_request(self.bytes_range)
         return request.iter_content
 
-
 class PartHTTPDownloader(HTTPDownloaderBase):
-    _server_capabilities = None
+    def __init__(self, 
+        *args,
+        accept_ranges: Optional[bool] = None,
+        accept_multiple_ranges: Optional[bool] = None,
+        **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        *args :
+            Positional arguments forwarded to `HTTPDownloaderBase`.
+        accept_ranges : bool, optional
+            Whether the server supports byte-range requests. If `None`,
+            the capability is probed from the response headers at request time.
+        accept_multiple_ranges : bool, optional
+            Whether the server supports multiple byte ranges in a single
+            request. Requires `accept_ranges=True`. If `None` and
+            `accept_ranges` is provided, defaults to the same value.
+        **kwargs :
+            Keyword arguments forwarded to `HTTPDownloaderBase`.
+
+        Raises
+        ------
+        ValueError
+            If `accept_multiple_ranges` is set without `accept_ranges`,
+            or if `accept_multiple_ranges=True` while `accept_ranges=False`.
+        """
+        super().__init__(*args, **kwargs)
+        if accept_ranges is None and accept_multiple_ranges is not None:
+            raise ValueError(
+                "When 'accept_multiple_ranges' is set, 'accept_ranges' must also be set, too."
+            )
+        if not accept_ranges and accept_multiple_ranges:
+            raise ValueError(
+                "When 'accept_multiple_ranges' is set to True, 'accept_ranges' must also be True."
+            )
+
+        self._server_capabilities = None
+        if accept_ranges is not None:
+            if accept_multiple_ranges is None:
+                accept_multiple_ranges = accept_ranges
+            self._server_capabilities = ServerCapabilities(
+                accept_ranges=accept_ranges,
+                accept_multiple_ranges=accept_multiple_ranges,
+            )
 
     def __repr__(self):
         return f"PartHTTPDownloader({self.url, self.parts})"
 
     @property
-    def server_capabilities(self):
+    def server_capabilities(self) -> ServerCapabilities:
         if self._server_capabilities is None:
             self._server_capabilities = ServerCapabilities(
                 accept_ranges=False,
-                accept_multiple_ranges=None,
+                accept_multiple_ranges=False,
             )
             headers = self.headers()
             if headers.get("accept-ranges") == "bytes":
                 self._server_capabilities.accept_ranges = True
+                self._server_capabilities.accept_multiple_ranges = True
 
-            # Special case for Azure
-            # The server does not announce byte-range support, but supports it
-            # The server will ignore multiple ranges and return everything
-            # https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations
-            if headers.get("server", "unknown").startswith("Windows-Azure-Blob"):
-                self._server_capabilities = ServerCapabilities(
-                    accept_ranges=True,
-                    accept_multiple_ranges=False,
-                )
-
-            # Special case for AWS
-            # The server will ignore multiple ranges and return everything
-            if headers.get("server", "unknown").startswith("AmazonS3"):
-                self._server_capabilities = ServerCapabilities(
-                    accept_ranges=True,
-                    accept_multiple_ranges=False,
-                )
-
+            # Special case for Azure:
+            #   The server does not announce byte-range support, but supports it
+            #   The server will ignore multiple ranges and return everything
+            #   https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations
+            # Special case for AWS:
+            #   The server will ignore multiple ranges and return everything
+            if (
+                    headers.get("server", "unknown").startswith("Windows-Azure-Blob")
+                    or headers.get("server", "unknown").startswith("AmazonS3")
+            ):
+                self._server_capabilities.accept_ranges = True
+                self._server_capabilities.accept_multiple_ranges = False
         return self._server_capabilities
 
     def mutate(self, *args, **kwargs):
@@ -431,10 +471,10 @@ class PartHTTPDownloader(HTTPDownloaderBase):
 
         def iterate_requests(chunk_size):
             for bytes_ranges, parts in splits:
-                if accept_multiple_ranges is False:
-                    request = self.issue_request(bytes_ranges.split(",")[0])
-                else:
+                if accept_multiple_ranges:
                     request = self.issue_request(bytes_ranges)
+                else:
+                    request = self.issue_request(bytes_ranges.split(",")[0])
 
                 stream = DecodeMultipart(
                     self.url,
