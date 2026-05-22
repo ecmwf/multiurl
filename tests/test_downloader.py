@@ -13,7 +13,7 @@ import os
 import pytest
 
 from multiurl import Downloader, download
-from multiurl.http import FullHTTPDownloader
+from multiurl.http import PartHTTPDownloader, FullHTTPDownloader
 
 
 def test_http():
@@ -51,7 +51,6 @@ def test_parts():
 
     with open("out.data", "rb") as f:
         assert f.read()[:4] == b"BUFR"
-
 
 def test_order():
     d = Downloader(
@@ -108,6 +107,27 @@ def test_ftp_download(tmp_path, ftpserver):
     with open(local_test_file) as original, open(local_test_download) as downloaded:
         assert original.read() == downloaded.read()
 
+
+class TestPartHTTPDownloader:
+    def test_instantiation(self):
+        url = "http://localhost"
+        downloader = PartHTTPDownloader(url, accept_ranges=True)
+        assert downloader.server_capabilities.accept_ranges == True
+        assert downloader.server_capabilities.accept_multiple_ranges == True
+
+        downloader = PartHTTPDownloader(url, accept_ranges=False)
+        assert downloader.server_capabilities.accept_ranges == False
+        assert downloader.server_capabilities.accept_multiple_ranges == False
+
+        downloader = PartHTTPDownloader(url, accept_ranges=True, accept_multiple_ranges=False)
+        assert downloader.server_capabilities.accept_ranges == True
+        assert downloader.server_capabilities.accept_multiple_ranges == False
+        
+        with pytest.raises(ValueError):
+            downloader = PartHTTPDownloader(url, accept_ranges=False, accept_multiple_ranges=True)
+        
+        with pytest.raises(ValueError):
+            downloader = PartHTTPDownloader(url, accept_multiple_ranges=False)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
