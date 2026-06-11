@@ -113,18 +113,18 @@ class TestPartHTTPDownloader:
     def test_instantiation(self):
         url = "http://localhost"
         downloader = PartHTTPDownloader(url, accept_ranges=True)
-        assert downloader.server_capabilities.accept_ranges == True
-        assert downloader.server_capabilities.accept_multiple_ranges == True
+        assert downloader.server_capabilities.accept_ranges is True
+        assert downloader.server_capabilities.accept_multiple_ranges is True
 
         downloader = PartHTTPDownloader(url, accept_ranges=False)
-        assert downloader.server_capabilities.accept_ranges == False
-        assert downloader.server_capabilities.accept_multiple_ranges == False
+        assert downloader.server_capabilities.accept_ranges is False
+        assert downloader.server_capabilities.accept_multiple_ranges is False
 
         downloader = PartHTTPDownloader(
             url, accept_ranges=True, accept_multiple_ranges=False
         )
-        assert downloader.server_capabilities.accept_ranges == True
-        assert downloader.server_capabilities.accept_multiple_ranges == False
+        assert downloader.server_capabilities.accept_ranges is True
+        assert downloader.server_capabilities.accept_multiple_ranges is False
 
         with pytest.raises(ValueError):
             downloader = PartHTTPDownloader(
