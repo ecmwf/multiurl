@@ -8,6 +8,7 @@
 #
 import logging
 import re
+
 import requests
 
 from .heuristics import Part, parts_heuristics

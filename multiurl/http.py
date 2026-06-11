@@ -13,12 +13,12 @@ import logging
 import os
 import random
 import time
+from dataclasses import dataclass
+from typing import Optional
+
 import pytz
 import requests
-
-from dataclasses import dataclass
 from dateutil.parser import parse as parse_date
-from typing import Optional
 
 from .base import DownloaderBase
 from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
