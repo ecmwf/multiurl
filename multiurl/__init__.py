@@ -11,7 +11,7 @@
 from .downloader import Downloader, download
 from .retry import robust
 
-__version__ = "0.3.8dev0"
+__version__ = "0.3.8"
 
 __all__ = [
     "download",
