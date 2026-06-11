@@ -347,7 +347,7 @@ class PartHTTPDownloader(HTTPDownloaderBase):
         *args,
         accept_ranges: Optional[bool] = None,
         accept_multiple_ranges: Optional[bool] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Parameters
@@ -410,10 +410,9 @@ class PartHTTPDownloader(HTTPDownloaderBase):
             #   https://docs.microsoft.com/en-us/rest/api/storageservices/specifying-the-range-header-for-blob-service-operations
             # Special case for AWS:
             #   The server will ignore multiple ranges and return everything
-            if (
-                    headers.get("server", "unknown").startswith("Windows-Azure-Blob")
-                    or headers.get("server", "unknown").startswith("AmazonS3")
-            ):
+            if headers.get("server", "unknown").startswith(
+                "Windows-Azure-Blob"
+            ) or headers.get("server", "unknown").startswith("AmazonS3"):
                 self._server_capabilities.accept_ranges = True
                 self._server_capabilities.accept_multiple_ranges = False
         return self._server_capabilities

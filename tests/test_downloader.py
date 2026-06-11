@@ -52,6 +52,7 @@ def test_parts():
     with open("out.data", "rb") as f:
         assert f.read()[:4] == b"BUFR"
 
+
 def test_order():
     d = Downloader(
         url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
@@ -119,15 +120,20 @@ class TestPartHTTPDownloader:
         assert downloader.server_capabilities.accept_ranges == False
         assert downloader.server_capabilities.accept_multiple_ranges == False
 
-        downloader = PartHTTPDownloader(url, accept_ranges=True, accept_multiple_ranges=False)
+        downloader = PartHTTPDownloader(
+            url, accept_ranges=True, accept_multiple_ranges=False
+        )
         assert downloader.server_capabilities.accept_ranges == True
         assert downloader.server_capabilities.accept_multiple_ranges == False
-        
+
         with pytest.raises(ValueError):
-            downloader = PartHTTPDownloader(url, accept_ranges=False, accept_multiple_ranges=True)
-        
+            downloader = PartHTTPDownloader(
+                url, accept_ranges=False, accept_multiple_ranges=True
+            )
+
         with pytest.raises(ValueError):
             downloader = PartHTTPDownloader(url, accept_multiple_ranges=False)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

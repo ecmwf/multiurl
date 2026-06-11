@@ -19,7 +19,8 @@ LOG = logging.getLogger(__name__)
 
 # S3 does not support multiple ranges
 class S3Streamer:
-    def __init__(self, 
+    def __init__(
+        self,
         url,
         request,
         parts,
@@ -27,7 +28,7 @@ class S3Streamer:
         retry_after=120,
         maximum_retries=500,
         mirrors=None,
-        **kwargs
+        **kwargs,
     ):
         self.url = url
         self.parts = parts
@@ -82,7 +83,7 @@ class S3Streamer:
             )
 
             yield from request.iter_content(chunk_size)
-    
+
     def robust(self, call):
         return robust(call, self.maximum_retries, self.retry_after, self.mirrors)
 
