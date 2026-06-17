@@ -37,6 +37,10 @@ def timeout(s):
         save.cancel()
 
 
+def test_retriable_is_list_or_tuple():
+    assert isinstance(RETRIABLE, (list, tuple))
+
+
 def test_robust():
     sleep = 5
     with timeout(len(RETRIABLE * sleep * 10)):

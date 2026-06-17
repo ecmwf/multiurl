@@ -21,7 +21,7 @@ from dateutil.parser import parse as parse_date
 
 from .base import DownloaderBase
 from .multipart import DecodeMultipart, PartFilter, compute_byte_ranges
-from .retry import robust
+from .retry import robust, RETRIABLE
 
 LOG = logging.getLogger(__name__)
 
