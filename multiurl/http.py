@@ -25,6 +25,7 @@ from .retry import robust, RETRIABLE
 
 LOG = logging.getLogger(__name__)
 
+
 @dataclass
 class ServerCapabilities:
     accept_ranges: bool
