@@ -37,6 +37,11 @@ def timeout(s):
         save.cancel()
 
 
+def test_retriable_is_list_of_strings():
+    assert isinstance(RETRIABLE, list)
+    assert all(isinstance(item, str) for item in RETRIABLE)
+
+
 def test_robust():
     sleep = 5
     with timeout(len(RETRIABLE * sleep * 10)):
