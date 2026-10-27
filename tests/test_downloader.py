@@ -7,8 +7,10 @@
 # nor does it submit to any jurisdiction.
 #
 
+import http.server
 import logging
 import os
+import threading
 
 import pytest
 
@@ -88,6 +90,77 @@ def test_content_disposition_handling():
     TestDownloader(
         url="http://get.ecmwf.int/test-data/metview/gallery/temp.bufr",
     ).download(target="out")
+
+
+@pytest.mark.parametrize(
+    "content_disposition,expected_extension,expected_title",
+    [
+        ('inline; filename="AND10210000102100001"', ".unknown", "AND10210000102100001"),
+        ('inline; filename="data.grib"', ".grib", "data.grib"),
+        ('attachment; filename="temp.bufr"', ".bufr", "temp.bufr"),
+        ('x-custom; filename="data.nc"', ".nc", "data.nc"),
+    ],
+)
+def test_content_disposition_extension_and_title(
+    content_disposition, expected_extension, expected_title
+):
+    class TestDownloader(FullHTTPDownloader):
+        def headers(self):
+            return {"content-disposition": content_disposition}
+
+    downloader = TestDownloader(
+        url="http://localhost/ecpds/data/file/20261021/AND10210000102100001",
+    )
+    assert downloader.extension() == expected_extension
+    assert downloader.title() == expected_title
+
+
+INLINE_CONTENT = b"some fixed bytes served with an inline content-disposition"
+
+
+class InlineHandler(http.server.BaseHTTPRequestHandler):
+    def _send_headers(self):
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(INLINE_CONTENT)))
+        self.send_header(
+            "Content-Disposition", 'inline; filename="AND10210000102100001"'
+        )
+        self.end_headers()
+
+    def do_HEAD(self):
+        self._send_headers()
+
+    def do_GET(self):
+        self._send_headers()
+        self.wfile.write(INLINE_CONTENT)
+
+    def log_message(self, format, *args):
+        pass
+
+
+@pytest.fixture
+def inline_server():
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), InlineHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def test_inline_content_disposition_local_server(inline_server, tmp_path):
+    host, port = inline_server.server_address[:2]
+    url = f"http://{host}:{port}/ecpds/data/file/20261021/AND10210000102100001"
+
+    downloader = Downloader(url)
+    assert downloader.extension() == ".unknown"
+
+    target = tmp_path / "target"
+    downloader.download(str(target))
+    assert target.read_bytes() == INLINE_CONTENT
 
 
 @pytest.mark.skip(reason="ftpserver not defined")
