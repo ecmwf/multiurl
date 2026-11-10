@@ -32,6 +32,7 @@ class S3Streamer:
     ):
         self.url = url
         self.parts = parts
+        self.session = requests.session()
         self.request = request
         self.headers = dict(**headers)
         self.retry_after = retry_after
@@ -51,7 +52,7 @@ class S3Streamer:
             else:
                 offset, length = part
                 headers["range"] = f"bytes={offset}-{offset+length-1}"
-                request = self.robust(requests.get)(
+                request = self.session.get(
                     self.url,
                     stream=True,
                     headers=headers,
