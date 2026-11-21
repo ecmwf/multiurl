@@ -107,5 +107,5 @@ def Downloader(url, **kwargs):
     return MultiDownloader(downloaders)
 
 
-def download(url, target, **kwargs):
-    return Downloader(url, **kwargs).download(target)
+def download(url, target, disable_progress_bar=False, **kwargs):
+    return Downloader(url, **kwargs).download(target, disable_progress_bar)
