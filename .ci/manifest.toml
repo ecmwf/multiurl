@@ -1,0 +1,26 @@
+[package]
+name = "multiurl"
+repo = "ecmwf/multiurl"
+visibility = "public"
+fork-pull-requests = false
+compiler-inputs = []
+ci-schedule = "43 3 * * *"
+ci-pre-commit = false
+full-history = true
+
+[matrix.test]
+triggers = ["upstream-change", "rebuild-request"]
+
+[matrix.test.defaults]
+job-script = "./.ci/test.sh.j2"
+runs-on = "ubuntu-26.04"
+platform = "gh-ubuntu-26.04"
+
+[[matrix.test.include]]
+python-version = "3.11"
+
+[[matrix.test.include]]
+python-version = "3.12"
+
+[[matrix.test.include]]
+python-version = "3.13"
